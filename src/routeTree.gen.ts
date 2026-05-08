@@ -13,6 +13,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as OffersRouteImport } from './routes/offers'
 import { Route as MealsRouteImport } from './routes/meals'
 import { Route as MarinadesRouteImport } from './routes/marinades'
+import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as BranchesRouteImport } from './routes/branches'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -36,6 +37,11 @@ const MarinadesRoute = MarinadesRouteImport.update({
   path: '/marinades',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BranchesRoute = BranchesRouteImport.update({
   id: '/branches',
   path: '/branches',
@@ -50,6 +56,7 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/branches': typeof BranchesRoute
+  '/checkout': typeof CheckoutRoute
   '/marinades': typeof MarinadesRoute
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
@@ -58,6 +65,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/branches': typeof BranchesRoute
+  '/checkout': typeof CheckoutRoute
   '/marinades': typeof MarinadesRoute
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
@@ -67,6 +75,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/branches': typeof BranchesRoute
+  '/checkout': typeof CheckoutRoute
   '/marinades': typeof MarinadesRoute
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
@@ -77,16 +86,25 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/branches'
+    | '/checkout'
     | '/marinades'
     | '/meals'
     | '/offers'
     | '/products'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/branches' | '/marinades' | '/meals' | '/offers' | '/products'
+  to:
+    | '/'
+    | '/branches'
+    | '/checkout'
+    | '/marinades'
+    | '/meals'
+    | '/offers'
+    | '/products'
   id:
     | '__root__'
     | '/'
     | '/branches'
+    | '/checkout'
     | '/marinades'
     | '/meals'
     | '/offers'
@@ -96,6 +114,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BranchesRoute: typeof BranchesRoute
+  CheckoutRoute: typeof CheckoutRoute
   MarinadesRoute: typeof MarinadesRoute
   MealsRoute: typeof MealsRoute
   OffersRoute: typeof OffersRoute
@@ -132,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MarinadesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/branches': {
       id: '/branches'
       path: '/branches'
@@ -152,6 +178,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BranchesRoute: BranchesRoute,
+  CheckoutRoute: CheckoutRoute,
   MarinadesRoute: MarinadesRoute,
   MealsRoute: MealsRoute,
   OffersRoute: OffersRoute,
