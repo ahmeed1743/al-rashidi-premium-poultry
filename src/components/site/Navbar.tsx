@@ -1,0 +1,120 @@
+import { Link, useRouterState } from "@tanstack/react-router";
+import { ShoppingCart, Menu, X } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useCart } from "@/store/cart";
+import { motion, AnimatePresence } from "framer-motion";
+
+const links = [
+  { to: "/", label: "الرئيسية" },
+  { to: "/products", label: "المنتجات" },
+  { to: "/offers", label: "العروض" },
+  { to: "/meals", label: "الواجبات" },
+  { to: "/marinades", label: "المتبلات" },
+  { to: "/branches", label: "الفروع" },
+] as const;
+
+export function Navbar() {
+  const setOpen = useCart((s) => s.setOpen);
+  const count = useCart((s) => s.items.reduce((a, b) => a + b.quantity, 0));
+  const [scrolled, setScrolled] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  const path = useRouterState({ select: (s) => s.location.pathname });
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll);
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
+  useEffect(() => setMobile(false), [path]);
+
+  return (
+    <header
+      className={`sticky top-0 z-50 transition-all duration-300 ${
+        scrolled ? "glass-strong shadow-card" : "bg-transparent"
+      }`}
+    >
+      <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20">
+        <Link to="/" className="flex items-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
+            <span className="text-lg font-black text-primary-foreground">ر</span>
+          </div>
+          <div className="leading-tight">
+            <div className="text-base font-extrabold md:text-lg">طيور الرشيدي</div>
+            <div className="text-[10px] text-muted-foreground md:text-xs">الجودة الأصلية</div>
+          </div>
+        </Link>
+
+        <nav className="hidden items-center gap-1 lg:flex">
+          {links.map((l) => {
+            const active = l.to === "/" ? path === "/" : path.startsWith(l.to);
+            return (
+              <Link
+                key={l.to}
+                to={l.to}
+                className={`relative rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  active ? "text-primary-foreground" : "text-foreground/80 hover:text-foreground"
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="navActive"
+                    className="absolute inset-0 -z-10 rounded-full bg-gradient-primary shadow-elegant"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                {l.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setOpen(true)}
+            className="relative inline-flex h-11 items-center gap-2 rounded-full bg-gradient-primary px-4 text-sm font-bold text-primary-foreground shadow-elegant transition-transform hover:scale-105"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            <span className="hidden sm:inline">السلة</span>
+            {count > 0 && (
+              <span className="absolute -top-1 -left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[11px] font-black text-background">
+                {count}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setMobile((v) => !v)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full glass lg:hidden"
+            aria-label="القائمة"
+          >
+            {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {mobile && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            className="overflow-hidden glass-strong lg:hidden"
+          >
+            <nav className="container mx-auto flex flex-col gap-1 px-4 py-3">
+              {links.map((l) => (
+                <Link
+                  key={l.to}
+                  to={l.to}
+                  className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-primary/10"
+                >
+                  {l.label}
+                </Link>
+              ))}
+            </nav>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </header>
+  );
+}
