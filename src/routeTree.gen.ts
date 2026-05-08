@@ -9,8 +9,44 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as OffersRouteImport } from './routes/offers'
+import { Route as MealsRouteImport } from './routes/meals'
+import { Route as MarinadesRouteImport } from './routes/marinades'
+import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as BranchesRouteImport } from './routes/branches'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OffersRoute = OffersRouteImport.update({
+  id: '/offers',
+  path: '/offers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MealsRoute = MealsRouteImport.update({
+  id: '/meals',
+  path: '/meals',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MarinadesRoute = MarinadesRouteImport.update({
+  id: '/marinades',
+  path: '/marinades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BranchesRoute = BranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +55,116 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/branches': typeof BranchesRoute
+  '/checkout': typeof CheckoutRoute
+  '/marinades': typeof MarinadesRoute
+  '/meals': typeof MealsRoute
+  '/offers': typeof OffersRoute
+  '/products': typeof ProductsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/branches': typeof BranchesRoute
+  '/checkout': typeof CheckoutRoute
+  '/marinades': typeof MarinadesRoute
+  '/meals': typeof MealsRoute
+  '/offers': typeof OffersRoute
+  '/products': typeof ProductsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/branches': typeof BranchesRoute
+  '/checkout': typeof CheckoutRoute
+  '/marinades': typeof MarinadesRoute
+  '/meals': typeof MealsRoute
+  '/offers': typeof OffersRoute
+  '/products': typeof ProductsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/branches'
+    | '/checkout'
+    | '/marinades'
+    | '/meals'
+    | '/offers'
+    | '/products'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/branches'
+    | '/checkout'
+    | '/marinades'
+    | '/meals'
+    | '/offers'
+    | '/products'
+  id:
+    | '__root__'
+    | '/'
+    | '/branches'
+    | '/checkout'
+    | '/marinades'
+    | '/meals'
+    | '/offers'
+    | '/products'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BranchesRoute: typeof BranchesRoute
+  CheckoutRoute: typeof CheckoutRoute
+  MarinadesRoute: typeof MarinadesRoute
+  MealsRoute: typeof MealsRoute
+  OffersRoute: typeof OffersRoute
+  ProductsRoute: typeof ProductsRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/offers': {
+      id: '/offers'
+      path: '/offers'
+      fullPath: '/offers'
+      preLoaderRoute: typeof OffersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meals': {
+      id: '/meals'
+      path: '/meals'
+      fullPath: '/meals'
+      preLoaderRoute: typeof MealsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/marinades': {
+      id: '/marinades'
+      path: '/marinades'
+      fullPath: '/marinades'
+      preLoaderRoute: typeof MarinadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/branches': {
+      id: '/branches'
+      path: '/branches'
+      fullPath: '/branches'
+      preLoaderRoute: typeof BranchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +177,12 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BranchesRoute: BranchesRoute,
+  CheckoutRoute: CheckoutRoute,
+  MarinadesRoute: MarinadesRoute,
+  MealsRoute: MealsRoute,
+  OffersRoute: OffersRoute,
+  ProductsRoute: ProductsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
