@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { ProductCard } from "@/components/site/ProductCard";
 import { PRODUCTS } from "@/data/products";
+import { fetchProducts } from "@/lib/products-api";
 
 export const Route = createFileRoute("/meals")({
   head: () => ({
@@ -14,7 +16,8 @@ export const Route = createFileRoute("/meals")({
 });
 
 function MealsPage() {
-  const meals = PRODUCTS.filter((p) => p.category === "meals");
+  const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
+  const meals = products.filter((p) => p.category === "meals");
   return (
     <SiteLayout>
       <div className="container mx-auto px-4 py-10">

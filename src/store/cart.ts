@@ -11,12 +11,21 @@ export interface CartItem {
   options?: Record<string, string>;
   cuttingNote?: string;
   generalNote?: string;
+  // Raw selections so we can reopen the dialog in edit mode
+  raw?: {
+    size?: string;
+    type?: string;
+    cut?: string;            // سليم | مقطع | خلي بالجلد | خلي شيش
+    cutKind?: string;        // قطع /4 ...
+    cutNote?: string;
+  };
 }
 
 interface CartState {
   items: CartItem[];
   isOpen: boolean;
   addItem: (item: Omit<CartItem, "uid"> & { uid?: string }) => void;
+  replaceItem: (uid: string, item: Omit<CartItem, "uid"> & { uid?: string }) => void;
   removeItem: (uid: string) => void;
   updateQty: (uid: string, qty: number) => void;
   clear: () => void;
@@ -46,6 +55,12 @@ export const useCart = create<CartState>()(
         } else {
           set({ items: [...get().items, { ...item, uid }], isOpen: true });
         }
+      },
+      replaceItem: (oldUid, item) => {
+        const uid = item.uid || makeUid(item);
+        set({
+          items: get().items.map((i) => (i.uid === oldUid ? { ...item, uid } : i)),
+        });
       },
       removeItem: (uid) => set({ items: get().items.filter((i) => i.uid !== uid) }),
       updateQty: (uid, qty) =>

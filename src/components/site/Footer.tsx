@@ -31,12 +31,13 @@ export function Footer() {
             <li className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" />01223381405</li>
             <li className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" />01099342344</li>
             <li className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" />01226151455</li>
+            <li className="flex items-center gap-2 pt-2 font-bold text-gold"><Phone className="h-4 w-4" />شكاوى: 01038319460</li>
           </ul>
         </div>
         <div>
-          <div className="mb-3 font-bold">مواعيد العمل</div>
+          <div className="mb-3 font-bold">خدمتنا</div>
           <ul className="space-y-2 text-sm text-muted-foreground">
-            <li className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" />يومياً 11ص — 1ص</li>
+            <li className="flex items-center gap-2"><Clock className="h-4 w-4 text-primary" />خدمة عملاء على واتساب</li>
             <li className="flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />فروعنا في انتظارك</li>
           </ul>
         </div>

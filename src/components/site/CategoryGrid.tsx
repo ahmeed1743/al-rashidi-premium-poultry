@@ -1,16 +1,22 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { CATEGORIES, PRODUCTS, type CategoryId } from "@/data/products";
 import { ProductCard } from "./ProductCard";
+import { fetchProducts } from "@/lib/products-api";
 
 export function CategoryGrid({ initial }: { initial?: CategoryId | "all" }) {
   const [active, setActive] = useState<CategoryId | "all">(initial || "all");
-  const items = active === "all" ? PRODUCTS : PRODUCTS.filter((p) => p.category === active);
+  const { data: products = PRODUCTS } = useQuery({
+    queryKey: ["products"],
+    queryFn: () => fetchProducts(false),
+  });
+  const items = active === "all" ? products : products.filter((p) => p.category === active);
   return (
     <div>
-      <div className="mb-6 flex flex-wrap gap-2">
+      <div className="no-scrollbar -mx-4 mb-6 flex gap-2 overflow-x-auto px-4">
         <button
           onClick={() => setActive("all")}
-          className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
+          className={`flex-none rounded-full px-4 py-2 text-sm font-bold transition-all ${
             active === "all"
               ? "bg-gradient-primary text-primary-foreground shadow-elegant"
               : "bg-secondary/40 hover:bg-secondary"
@@ -22,7 +28,7 @@ export function CategoryGrid({ initial }: { initial?: CategoryId | "all" }) {
           <button
             key={c.id}
             onClick={() => setActive(c.id)}
-            className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
+            className={`flex-none whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold transition-all ${
               active === c.id
                 ? "bg-gradient-primary text-primary-foreground shadow-elegant"
                 : "bg-secondary/40 hover:bg-secondary"

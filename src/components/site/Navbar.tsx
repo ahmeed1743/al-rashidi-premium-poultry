@@ -1,7 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ShoppingCart, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useCart } from "@/store/cart";
 import { motion, AnimatePresence } from "framer-motion";
 
 const links = [
@@ -14,8 +13,6 @@ const links = [
 ] as const;
 
 export function Navbar() {
-  const setOpen = useCart((s) => s.setOpen);
-  const count = useCart((s) => s.items.reduce((a, b) => a + b.quantity, 0));
   const [scrolled, setScrolled] = useState(false);
   const [mobile, setMobile] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -70,27 +67,13 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setOpen(true)}
-            className="relative inline-flex h-11 items-center gap-2 rounded-full bg-gradient-primary px-4 text-sm font-bold text-primary-foreground shadow-elegant transition-transform hover:scale-105"
-          >
-            <ShoppingCart className="h-4 w-4" />
-            <span className="hidden sm:inline">السلة</span>
-            {count > 0 && (
-              <span className="absolute -top-1 -left-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gold px-1 text-[11px] font-black text-background">
-                {count}
-              </span>
-            )}
-          </button>
-          <button
-            onClick={() => setMobile((v) => !v)}
-            className="inline-flex h-11 w-11 items-center justify-center rounded-full glass lg:hidden"
-            aria-label="القائمة"
-          >
-            {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
-        </div>
+        <button
+          onClick={() => setMobile((v) => !v)}
+          className="inline-flex h-11 w-11 items-center justify-center rounded-full glass lg:hidden"
+          aria-label="القائمة"
+        >
+          {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
       </div>
 
       <AnimatePresence>

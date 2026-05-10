@@ -27,7 +27,7 @@ export function ProductCard({ product }: { product: Product }) {
               {product.badge}
             </div>
           )}
-          {product.oldPrice && (
+          {product.oldPrice && !product.badge && (
             <div className="absolute top-3 left-3 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
               عرض
             </div>
@@ -36,20 +36,14 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="flex flex-1 flex-col gap-2 p-4">
           <h3 className="text-base font-extrabold leading-tight md:text-lg">{product.name}</h3>
           <p className="line-clamp-2 text-xs text-muted-foreground md:text-sm">{product.description}</p>
-          <div className="mt-auto flex items-center justify-between pt-2">
-            <div className="flex items-baseline gap-2">
-              <span className="text-xl font-black text-gradient-primary">{product.price}</span>
-              <span className="text-xs text-muted-foreground">جنيه</span>
-              {product.oldPrice && (
-                <span className="text-xs text-muted-foreground line-through">{product.oldPrice}</span>
-              )}
-            </div>
+          <div className="mt-auto flex items-center justify-end pt-2">
             <button
               onClick={() => setOpen(true)}
-              className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-elegant transition-transform hover:scale-110 active:scale-95"
+              className="inline-flex h-11 items-center gap-2 rounded-full bg-gradient-primary px-5 text-sm font-extrabold text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95"
               aria-label="أضف للسلة"
             >
-              <Plus className="h-5 w-5" />
+              <Plus className="h-4 w-4" />
+              أضف للسلة
             </button>
           </div>
         </div>
