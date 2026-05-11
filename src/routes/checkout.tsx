@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { useCart } from "@/store/cart";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
 import { MessageCircle, Truck, Store, Banknote, Smartphone } from "lucide-react";
 import { toast } from "sonner";
+import { saveOrder, getAddressByPhone, upsertAddress } from "@/lib/orders-api";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -26,10 +27,12 @@ const WHATSAPP_NUMBERS = [
   { id: "201226151455", label: "01226151455" },
 ];
 
-const PICKUP_TIMES = [
+const TIME_SLOTS = [
   "خلال ساعتين إلى 3 ساعات",
-  "11:00 ص", "12:00 م", "1:00 م", "2:00 م", "3:00 م", "4:00 م",
+  "11:00 ص", "12:00 م", "1:00 م", "2:00 م", "3:00 م", "4:00 م", "5:00 م", "6:00 م", "7:00 م", "8:00 م",
 ];
+
+const BRANCHES = ["الفرع الرئيسي", "فرع 2", "فرع 3"];
 
 type Method = "delivery" | "pickup";
 type Pay = "cash" | "instapay";
@@ -40,42 +43,56 @@ function CheckoutPage() {
   const [method, setMethod] = useState<Method>("delivery");
   const [pay, setPay] = useState<Pay>("cash");
   const [whatsapp, setWhatsapp] = useState(WHATSAPP_NUMBERS[0].id);
-  const [pickupTime, setPickupTime] = useState(PICKUP_TIMES[0]);
-  const [form, setForm] = useState({
-    name: "", phone: "", area: "", street: "", floorApt: "", notes: "",
-  });
+  const [timeSlot, setTimeSlot] = useState(TIME_SLOTS[0]);
+  const [branch, setBranch] = useState(BRANCHES[0]);
+  const [form, setForm] = useState({ name: "", phone: "", area: "", street: "", floorApt: "", notes: "" });
+  const [savedFound, setSavedFound] = useState(false);
 
   const upd = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
+
+  // Look up saved address by phone
+  useEffect(() => {
+    const phone = form.phone.trim();
+    if (phone.length < 8) { setSavedFound(false); return; }
+    const t = setTimeout(async () => {
+      const a = await getAddressByPhone(phone);
+      if (a) {
+        setForm((s) => ({
+          ...s,
+          name: s.name || a.customer_name || "",
+          area: s.area || a.region || "",
+          street: s.street || a.street || "",
+          floorApt: s.floorApt || a.floor_apt || "",
+        }));
+        setSavedFound(true);
+      } else {
+        setSavedFound(false);
+      }
+    }, 500);
+    return () => clearTimeout(t);
+  }, [form.phone]);
 
   const buildMessage = () => {
     const lines: string[] = [];
     lines.push("🍗 *طلب جديد - طيور الرشيدي*");
     lines.push("━━━━━━━━━━━━━━");
-    lines.push("");
-    lines.push("👤 *بيانات العميل*");
-    lines.push(`• الاسم: ${form.name}`);
-    lines.push(`• الهاتف: ${form.phone}`);
-    lines.push("");
-    lines.push(`🚚 *طريقة الاستلام:* ${method === "delivery" ? "توصيل" : "استلام من الفرع"}`);
+    lines.push(`👤 الاسم: ${form.name}`);
+    lines.push(`📱 الهاتف: ${form.phone}`);
+    lines.push(`🚚 ${method === "delivery" ? "توصيل" : "استلام من الفرع: " + branch}`);
+    lines.push(`⏰ الوقت: ${timeSlot}`);
     if (method === "delivery") {
-      lines.push("");
-      lines.push("📍 *العنوان*");
-      if (form.area) lines.push(`• المنطقة: ${form.area}`);
-      if (form.street) lines.push(`• تفاصيل الشارع: ${form.street}`);
-      if (form.floorApt) lines.push(`• الدور والشقة: ${form.floorApt}`);
-    } else {
-      lines.push(`⏰ وقت الاستلام: ${pickupTime}`);
+      lines.push("📍 العنوان:");
+      if (form.area) lines.push(`  • المنطقة: ${form.area}`);
+      if (form.street) lines.push(`  • الشارع: ${form.street}`);
+      if (form.floorApt) lines.push(`  • الدور والشقة: ${form.floorApt}`);
     }
-    lines.push("");
-    lines.push(`💰 *طريقة الدفع:* ${pay === "cash" ? "كاش" : "Instapay"}`);
+    lines.push(`💰 الدفع: ${pay === "cash" ? "كاش" : "Instapay"}`);
     lines.push("");
     lines.push("🛒 *المنتجات*");
     items.forEach((it, i) => {
-      lines.push(`${i + 1}. ${it.name}  ×${it.quantity}`);
-      if (it.options) {
-        Object.entries(it.options).forEach(([k, v]) => lines.push(`    - ${k}: ${v}`));
-      }
-      if (it.cuttingNote) lines.push(`    📝 ${it.cuttingNote}`);
+      lines.push(`${i + 1}. ${it.name}  ×${it.quantity}${it.pairUnit ? " جوز" : ""}`);
+      if (it.options) Object.entries(it.options).forEach(([k, v]) => lines.push(`    - ${k}: ${v}`));
+      if (it.generalNote) lines.push(`    📝 ${it.generalNote}`);
     });
     if (form.notes) {
       lines.push("");
@@ -84,19 +101,37 @@ function CheckoutPage() {
     return encodeURIComponent(lines.join("\n"));
   };
 
-  const submit = () => {
-    if (!form.name || !form.phone) {
-      toast.error("من فضلك ادخل الاسم ورقم الهاتف");
-      return;
-    }
-    if (method === "delivery" && (!form.area || !form.street)) {
-      toast.error("من فضلك أكمل بيانات العنوان");
-      return;
-    }
-    if (items.length === 0) {
-      toast.error("السلة فاضية");
-      return;
-    }
+  const submit = async () => {
+    if (!form.name || !form.phone) { toast.error("ادخل الاسم ورقم الهاتف"); return; }
+    if (method === "delivery" && (!form.area || !form.street)) { toast.error("أكمل بيانات العنوان"); return; }
+    if (items.length === 0) { toast.error("السلة فاضية"); return; }
+
+    // Save in background
+    Promise.all([
+      saveOrder({
+        phone: form.phone,
+        customer_name: form.name,
+        mode: method,
+        region: form.area,
+        street: form.street,
+        floor_apt: form.floorApt,
+        branch: method === "pickup" ? branch : undefined,
+        time_slot: timeSlot,
+        notes: form.notes,
+        whatsapp_number: whatsapp,
+        items,
+      }),
+      method === "delivery"
+        ? upsertAddress({
+            phone: form.phone,
+            customer_name: form.name,
+            region: form.area,
+            street: form.street,
+            floor_apt: form.floorApt,
+          })
+        : Promise.resolve(),
+    ]).catch(() => {});
+
     const url = `https://wa.me/${whatsapp}?text=${buildMessage()}`;
     window.open(url, "_blank");
     toast.success("جاري فتح واتساب لإرسال طلبك");
@@ -107,10 +142,7 @@ function CheckoutPage() {
       <SiteLayout>
         <div className="container mx-auto px-4 py-20 text-center">
           <h1 className="text-2xl font-black">سلتك فاضية</h1>
-          <p className="mt-2 text-muted-foreground">ابدأ التسوق دلوقتي.</p>
-          <Button onClick={() => navigate({ to: "/products" })} className="mt-6 bg-gradient-primary text-primary-foreground">
-            تصفح المنتجات
-          </Button>
+          <Button onClick={() => navigate({ to: "/products" })} className="mt-6 bg-gradient-primary text-primary-foreground">تصفح المنتجات</Button>
         </div>
       </SiteLayout>
     );
@@ -134,6 +166,11 @@ function CheckoutPage() {
               <Field label="الاسم" v={form.name} onChange={(v) => upd("name", v)} />
               <Field label="رقم الهاتف" v={form.phone} onChange={(v) => upd("phone", v)} />
             </div>
+            {savedFound && (
+              <div className="mt-3 rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary">
+                ✓ تم استرجاع بياناتك المحفوظة
+              </div>
+            )}
           </Section>
 
           {method === "delivery" && (
@@ -147,22 +184,26 @@ function CheckoutPage() {
           )}
 
           {method === "pickup" && (
-            <Section title="وقت الاستلام">
+            <Section title="الفرع">
               <div className="flex flex-wrap gap-2">
-                {PICKUP_TIMES.map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setPickupTime(t)}
-                    className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
-                      pickupTime === t ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"
-                    }`}
-                  >
-                    {t}
+                {BRANCHES.map((b) => (
+                  <button key={b} onClick={() => setBranch(b)} className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${branch === b ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"}`}>
+                    {b}
                   </button>
                 ))}
               </div>
             </Section>
           )}
+
+          <Section title="وقت الاستلام / التوصيل">
+            <div className="flex flex-wrap gap-2">
+              {TIME_SLOTS.map((t) => (
+                <button key={t} onClick={() => setTimeSlot(t)} className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${timeSlot === t ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"}`}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </Section>
 
           <Section title="طريقة الدفع">
             <div className="grid grid-cols-2 gap-3">
@@ -174,13 +215,7 @@ function CheckoutPage() {
           <Section title="إرسال الطلب على واتساب">
             <div className="flex flex-wrap gap-2">
               {WHATSAPP_NUMBERS.map((n) => (
-                <button
-                  key={n.id}
-                  onClick={() => setWhatsapp(n.id)}
-                  className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${
-                    whatsapp === n.id ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"
-                  }`}
-                >
+                <button key={n.id} onClick={() => setWhatsapp(n.id)} className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${whatsapp === n.id ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"}`}>
                   {n.label}
                 </button>
               ))}
@@ -192,7 +227,6 @@ function CheckoutPage() {
           </Section>
         </motion.div>
 
-        {/* Summary - no prices */}
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="space-y-4 rounded-2xl bg-gradient-card p-5 shadow-card">
             <h3 className="text-lg font-extrabold">ملخص الطلب</h3>
@@ -201,17 +235,16 @@ function CheckoutPage() {
                 <div key={it.uid} className="border-b border-border/50 pb-2 last:border-0">
                   <div className="flex justify-between gap-2">
                     <span className="font-bold">{it.name}</span>
-                    <span className="text-muted-foreground">×{it.quantity}</span>
+                    <span className="text-muted-foreground">×{it.quantity}{it.pairUnit ? " جوز" : ""}</span>
                   </div>
                   {it.options && (
                     <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
                       {Object.entries(it.options).map(([k, v]) => (
-                        <span key={k} className="rounded-full bg-background px-2 py-0.5">
-                          {k}: {v}
-                        </span>
+                        <span key={k} className="rounded-full bg-background px-2 py-0.5">{k}: {v}</span>
                       ))}
                     </div>
                   )}
+                  {it.generalNote && <div className="mt-1 text-[11px] text-muted-foreground">📝 {it.generalNote}</div>}
                 </div>
               ))}
             </div>
@@ -219,9 +252,7 @@ function CheckoutPage() {
               <MessageCircle className="ml-2 h-5 w-5" />
               تأكيد عبر واتساب
             </Button>
-            <button onClick={clear} className="w-full text-xs text-muted-foreground hover:text-destructive">
-              مسح السلة
-            </button>
+            <button onClick={clear} className="w-full text-xs text-muted-foreground hover:text-destructive">مسح السلة</button>
           </div>
         </div>
       </div>
@@ -230,32 +261,11 @@ function CheckoutPage() {
 }
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-2xl bg-gradient-card p-5 shadow-card">
-      <h3 className="mb-4 text-lg font-extrabold">{title}</h3>
-      {children}
-    </div>
-  );
+  return <div className="rounded-2xl bg-gradient-card p-5 shadow-card"><h3 className="mb-4 text-lg font-extrabold">{title}</h3>{children}</div>;
 }
-
 function Field({ label, v, onChange }: { label: string; v: string; onChange: (v: string) => void }) {
-  return (
-    <div className="space-y-1.5">
-      <Label className="text-sm">{label}</Label>
-      <Input value={v} onChange={(e) => onChange(e.target.value)} className="bg-background" />
-    </div>
-  );
+  return <div className="space-y-1.5"><Label className="text-sm">{label}</Label><Input value={v} onChange={(e) => onChange(e.target.value)} className="bg-background" /></div>;
 }
-
 function Choice({ active, onClick, icon, label }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-bold transition-all ${
-        active ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant" : "border-border bg-secondary/40"
-      }`}
-    >
-      {icon} {label}
-    </button>
-  );
+  return <button onClick={onClick} className={`flex items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-bold transition-all ${active ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant" : "border-border bg-secondary/40"}`}>{icon} {label}</button>;
 }
