@@ -1,16 +1,20 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { CATEGORIES, PRODUCTS, type CategoryId } from "@/data/products";
+import { PRODUCTS, SECTIONS, type SectionId } from "@/data/products";
 import { ProductCard } from "./ProductCard";
 import { fetchProducts } from "@/lib/products-api";
 
-export function CategoryGrid({ initial }: { initial?: CategoryId | "all" }) {
-  const [active, setActive] = useState<CategoryId | "all">(initial || "all");
+export function CategoryGrid({ initial }: { initial?: SectionId | "all" }) {
+  const [active, setActive] = useState<SectionId | "all">(initial || "all");
   const { data: products = PRODUCTS } = useQuery({
     queryKey: ["products"],
     queryFn: () => fetchProducts(false),
   });
-  const items = active === "all" ? products : products.filter((p) => p.category === active);
+  const items = useMemo(
+    () => (active === "all" ? products : products.filter((p) => p.section === active)),
+    [active, products],
+  );
+
   return (
     <div>
       <div className="no-scrollbar -mx-4 mb-6 flex gap-2 overflow-x-auto px-4">
@@ -24,7 +28,7 @@ export function CategoryGrid({ initial }: { initial?: CategoryId | "all" }) {
         >
           الكل
         </button>
-        {CATEGORIES.map((c) => (
+        {SECTIONS.map((c) => (
           <button
             key={c.id}
             onClick={() => setActive(c.id)}
@@ -34,7 +38,7 @@ export function CategoryGrid({ initial }: { initial?: CategoryId | "all" }) {
                 : "bg-secondary/40 hover:bg-secondary"
             }`}
           >
-            {c.label}
+            <span className="ml-1">{c.emoji}</span>{c.label}
           </button>
         ))}
       </div>
@@ -44,9 +48,7 @@ export function CategoryGrid({ initial }: { initial?: CategoryId | "all" }) {
         </div>
       ) : (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {items.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
+          {items.map((p) => <ProductCard key={p.id} product={p} />)}
         </div>
       )}
     </div>
