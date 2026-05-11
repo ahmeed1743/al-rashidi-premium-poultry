@@ -14,12 +14,103 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_addresses: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          floor_apt: string | null
+          id: string
+          phone: string
+          region: string | null
+          street: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          floor_apt?: string | null
+          id?: string
+          phone: string
+          region?: string | null
+          street?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          floor_apt?: string | null
+          id?: string
+          phone?: string
+          region?: string | null
+          street?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      orders: {
+        Row: {
+          branch: string | null
+          created_at: string
+          customer_name: string | null
+          floor_apt: string | null
+          id: string
+          items: Json
+          mode: string
+          notes: string | null
+          phone: string
+          region: string | null
+          status: string
+          street: string | null
+          time_slot: string | null
+          total: number
+          updated_at: string
+          whatsapp_number: string | null
+        }
+        Insert: {
+          branch?: string | null
+          created_at?: string
+          customer_name?: string | null
+          floor_apt?: string | null
+          id?: string
+          items: Json
+          mode: string
+          notes?: string | null
+          phone: string
+          region?: string | null
+          status?: string
+          street?: string | null
+          time_slot?: string | null
+          total?: number
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Update: {
+          branch?: string | null
+          created_at?: string
+          customer_name?: string | null
+          floor_apt?: string | null
+          id?: string
+          items?: Json
+          mode?: string
+          notes?: string | null
+          phone?: string
+          region?: string | null
+          status?: string
+          street?: string | null
+          time_slot?: string | null
+          total?: number
+          updated_at?: string
+          whatsapp_number?: string | null
+        }
+        Relationships: []
+      }
       products: {
         Row: {
           badge: string | null
           category: string
           created_at: string
           customization: string
+          customization_config: Json | null
           description: string
           id: string
           image_url: string
@@ -27,8 +118,10 @@ export type Database = {
           name: string
           note: string | null
           old_price: number | null
+          pair_unit: boolean
           price: number
           sort_order: number
+          subcategory: string | null
           updated_at: string
         }
         Insert: {
@@ -36,6 +129,7 @@ export type Database = {
           category: string
           created_at?: string
           customization?: string
+          customization_config?: Json | null
           description?: string
           id: string
           image_url?: string
@@ -43,8 +137,10 @@ export type Database = {
           name: string
           note?: string | null
           old_price?: number | null
+          pair_unit?: boolean
           price?: number
           sort_order?: number
+          subcategory?: string | null
           updated_at?: string
         }
         Update: {
@@ -52,6 +148,7 @@ export type Database = {
           category?: string
           created_at?: string
           customization?: string
+          customization_config?: Json | null
           description?: string
           id?: string
           image_url?: string
@@ -59,8 +156,10 @@ export type Database = {
           name?: string
           note?: string | null
           old_price?: number | null
+          pair_unit?: boolean
           price?: number
           sort_order?: number
+          subcategory?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -83,6 +182,33 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      visit_events: {
+        Row: {
+          created_at: string
+          id: string
+          path: string
+          referrer: string | null
+          session_id: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          path: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          path?: string
+          referrer?: string | null
+          session_id?: string | null
+          user_agent?: string | null
         }
         Relationships: []
       }
