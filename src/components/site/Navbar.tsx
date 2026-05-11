@@ -6,9 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 const links = [
   { to: "/", label: "الرئيسية" },
   { to: "/products", label: "المنتجات" },
-  { to: "/offers", label: "العروض" },
-  { to: "/meals", label: "الواجبات" },
   { to: "/marinades", label: "المتبلات" },
+  { to: "/offers", label: "العروض" },
   { to: "/branches", label: "الفروع" },
 ] as const;
 
@@ -86,11 +85,7 @@ export function Navbar() {
           >
             <nav className="container mx-auto flex flex-col gap-1 px-4 py-3">
               {links.map((l) => (
-                <Link
-                  key={l.to}
-                  to={l.to}
-                  className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-primary/10"
-                >
+                <Link key={l.to} to={l.to} className="rounded-xl px-4 py-3 text-sm font-semibold hover:bg-primary/10">
                   {l.label}
                 </Link>
               ))}

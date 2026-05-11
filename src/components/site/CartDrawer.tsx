@@ -24,9 +24,7 @@ export function CartDrawer() {
             <div className="flex flex-1 flex-col items-center justify-center gap-3 text-center">
               <ShoppingBag className="h-14 w-14 text-muted-foreground" />
               <p className="text-muted-foreground">سلتك فاضية</p>
-              <Button onClick={() => setOpen(false)} variant="secondary">
-                تسوق الآن
-              </Button>
+              <Button onClick={() => setOpen(false)} variant="secondary">تسوق الآن</Button>
             </div>
           ) : (
             <>
@@ -40,10 +38,7 @@ export function CartDrawer() {
                           <div className="font-bold">{it.name}</div>
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => {
-                                setOpen(false);
-                                setEditing(it);
-                              }}
+                              onClick={() => { setOpen(false); setEditing(it); }}
                               className="text-muted-foreground transition-colors hover:text-primary"
                               aria-label="تعديل"
                             >
@@ -61,14 +56,12 @@ export function CartDrawer() {
                         {it.options && (
                           <div className="flex flex-wrap gap-1 text-[11px] text-muted-foreground">
                             {Object.entries(it.options).map(([k, v]) => (
-                              <span key={k} className="rounded-full bg-background px-2 py-0.5">
-                                {k}: {v}
-                              </span>
+                              <span key={k} className="rounded-full bg-background px-2 py-0.5">{k}: {v}</span>
                             ))}
                           </div>
                         )}
-                        {it.cuttingNote && (
-                          <div className="text-[11px] text-muted-foreground">📝 {it.cuttingNote}</div>
+                        {it.generalNote && (
+                          <div className="text-[11px] text-muted-foreground">📝 {it.generalNote}</div>
                         )}
                         <div className="mt-auto flex items-center justify-between">
                           <div className="flex items-center gap-2">
@@ -78,7 +71,7 @@ export function CartDrawer() {
                             >
                               <Minus className="h-3 w-3" />
                             </button>
-                            <span className="w-5 text-center text-sm font-bold">{it.quantity}</span>
+                            <span className="w-5 text-center text-sm font-bold">{it.quantity}{it.pairUnit ? " جوز" : ""}</span>
                             <button
                               onClick={() => updateQty(it.uid, it.quantity + 1)}
                               className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground"
