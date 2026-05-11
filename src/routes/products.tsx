@@ -6,7 +6,7 @@ export const Route = createFileRoute("/products")({
   head: () => ({
     meta: [
       { title: "المنتجات — طيور الرشيدي" },
-      { name: "description", content: "تشكيلة كاملة من الفراخ، البط، الرومي، الأرانب والمتبلات." },
+      { name: "description", content: "كل منتجات طيور الرشيدي: فراخ، بط، رومي، حمام وسمان، متبلات، أجزاء، وأرانب." },
     ],
   }),
   component: ProductsPage,

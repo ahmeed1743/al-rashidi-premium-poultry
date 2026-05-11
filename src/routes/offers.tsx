@@ -17,7 +17,7 @@ export const Route = createFileRoute("/offers")({
 
 function OffersPage() {
   const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
-  const offers = products.filter((p) => p.category === "offers" || p.oldPrice);
+  const offers = products.filter((p) => p.oldPrice || p.badge);
   return (
     <SiteLayout>
       <div className="container mx-auto px-4 py-10">
@@ -26,11 +26,15 @@ function OffersPage() {
         </div>
         <h1 className="mb-2 text-3xl font-black md:text-5xl">العروض</h1>
         <p className="mb-8 text-muted-foreground">وفر أكتر مع باقاتنا المختارة.</p>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
-          {offers.map((p) => (
-            <ProductCard key={p.id} product={p} />
-          ))}
-        </div>
+        {offers.length === 0 ? (
+          <div className="rounded-2xl bg-card py-16 text-center text-muted-foreground">
+            لا توجد عروض متاحة حالياً. تابعنا للجديد قريباً!
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+            {offers.map((p) => <ProductCard key={p.id} product={p} />)}
+          </div>
+        )}
       </div>
     </SiteLayout>
   );
