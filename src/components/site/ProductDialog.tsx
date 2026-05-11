@@ -6,19 +6,37 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Minus, Plus, ShoppingCart, Info } from "lucide-react";
 import type { Product } from "@/data/products";
 import { useCart, type CartItem } from "@/store/cart";
+import { getSchema, type Group } from "@/data/customization";
 import { toast } from "sonner";
 
+function InfoBtn({ text }: { text: string }) {
+  return (
+    <TooltipProvider delayDuration={100}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button type="button" className="text-muted-foreground hover:text-primary" aria-label={text}>
+            <Info className="h-4 w-4" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="max-w-[240px] text-right">{text}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
 function Chip({
-  active, onClick, children,
-}: { active: boolean; onClick: () => void; children: React.ReactNode }) {
+  active, onClick, children, danger,
+}: { active: boolean; onClick: () => void; children: React.ReactNode; danger?: boolean }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-full border px-4 py-2 text-sm font-semibold transition-all ${
+      className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${
         active
           ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant"
-          : "border-border bg-secondary/40 text-foreground/80 hover:border-primary/50"
+          : danger
+            ? "border-destructive/40 bg-destructive/5 text-destructive/90 hover:border-destructive"
+            : "border-border bg-secondary/40 text-foreground/80 hover:border-primary/50"
       }`}
     >
       {children}
@@ -26,33 +44,75 @@ function Chip({
   );
 }
 
-function ChipWithInfo({
-  active, onClick, label, info,
-}: { active: boolean; onClick: () => void; label: string; info: string }) {
+function GroupChips({
+  groups, value, onChange, label,
+}: {
+  groups: Group[];
+  value: string;
+  onChange: (id: string) => void;
+  label: string;
+}) {
   return (
-    <div className="flex items-center gap-1">
-      <Chip active={active} onClick={onClick}>{label}</Chip>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button type="button" className="text-muted-foreground hover:text-primary" aria-label={info}>
-              <Info className="h-4 w-4" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top">{info}</TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <div className="space-y-2">
+      <div className="text-sm font-bold">{label}</div>
+      <div className="flex flex-wrap items-center gap-2">
+        {groups.map((g) => (
+          <div key={g.id} className="flex items-center gap-1">
+            <Chip active={value === g.id} onClick={() => onChange(g.id)}>{g.label}</Chip>
+            {g.info && <InfoBtn text={g.info} />}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
-const CUT_KINDS = ["قطع /4", "قطع /8", "قطع بالطول", "قطع بالعرض"];
+function SubRadio({
+  options, value, onChange, danger,
+}: {
+  options: NonNullable<Group["subOptions"]>;
+  value: string;
+  onChange: (id: string) => void;
+  danger?: boolean;
+}) {
+  return (
+    <div className={`space-y-2 rounded-xl border p-3 ${danger ? "border-destructive/50 bg-destructive/5" : "border-primary/30 bg-primary/5"}`}>
+      <div className="text-xs font-bold text-muted-foreground">
+        {danger ? "اختر طريقة (مطلوب)" : "اختر طريقة"}
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {options.map((o) => (
+          <label
+            key={o.id}
+            className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-all ${
+              value === o.id
+                ? "border-primary bg-gradient-primary text-primary-foreground"
+                : "border-border bg-background hover:border-primary/40"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <input
+                type="radio"
+                checked={value === o.id}
+                onChange={() => onChange(o.id)}
+                className="accent-primary"
+              />
+              {o.label}
+            </span>
+            {o.info && (
+              <span onClick={(e) => e.preventDefault()}>
+                <InfoBtn text={o.info} />
+              </span>
+            )}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export function ProductDialog({
-  product,
-  open,
-  onOpenChange,
-  editing,
+  product, open, onOpenChange, editing,
 }: {
   product: Product;
   open: boolean;
@@ -61,64 +121,51 @@ export function ProductDialog({
 }) {
   const add = useCart((s) => s.addItem);
   const replace = useCart((s) => s.replaceItem);
+  const schema = useMemo(() => getSchema(product.customization), [product.customization]);
 
-  const config = useMemo(() => {
-    switch (product.customization) {
-      case "size-cut":
-        return { sizes: ["صغير", "وسط", "فوق الوسط", "كبير"], hasCuts: true };
-      case "duck":
-        return { types: ["فلاحي", "مسكوفي"], hasCuts: true };
-      case "baladi-hor":
-        return { fixedSize: "صغير", hasCuts: true };
-      case "type-cut":
-        return { types: ["أبيض", "بلدي"], hasCuts: true, cutTwoOnly: true };
-      case "type-cut-simple":
-        return { types: ["أبيض", "بلدي"], hasCuts: true };
-      case "cut-only":
-        return { hasCuts: true };
-      default:
-        return {};
-    }
-  }, [product.customization]);
+  const [sizeId, setSizeId] = useState("");
+  const [typeId, setTypeId] = useState("");
+  const [cutId, setCutId] = useState("");
+  const [cutSubId, setCutSubId] = useState("");
+  const [note, setNote] = useState("");
+  const [qty, setQty] = useState(1);
 
-  const cutOptions = (config as any).hasCuts
-    ? ["سليم", "مقطع", "خلي بالجلد", "خلي شيش"]
-    : [];
-
-  const [size, setSize] = useState(editing?.raw?.size || (config as any).sizes?.[0] || (config as any).fixedSize || "");
-  const [type, setType] = useState(editing?.raw?.type || (config as any).types?.[0] || "");
-  const [cut, setCut] = useState(editing?.raw?.cut || cutOptions[0] || "");
-  const [cutKind, setCutKind] = useState(editing?.raw?.cutKind || CUT_KINDS[0]);
-  const [cutNote, setCutNote] = useState(editing?.raw?.cutNote || "");
-  const [qty, setQty] = useState(editing?.quantity || 1);
-
-  // Reset when dialog opens fresh
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setSize(editing.raw?.size || (config as any).sizes?.[0] || (config as any).fixedSize || "");
-      setType(editing.raw?.type || (config as any).types?.[0] || "");
-      setCut(editing.raw?.cut || cutOptions[0] || "");
-      setCutKind(editing.raw?.cutKind || CUT_KINDS[0]);
-      setCutNote(editing.raw?.cutNote || "");
+      setSizeId(editing.raw?.sizeId || "");
+      setTypeId(editing.raw?.typeId || "");
+      setCutId(editing.raw?.cutId || "");
+      setCutSubId(editing.raw?.cutSubId || "");
+      setNote(editing.generalNote || "");
       setQty(editing.quantity);
     } else {
-      setSize((config as any).sizes?.[0] || (config as any).fixedSize || "");
-      setType((config as any).types?.[0] || "");
-      setCut(cutOptions[0] || "");
-      setCutKind(CUT_KINDS[0]);
-      setCutNote("");
+      setSizeId(schema.sizes?.[0]?.id || "");
+      setTypeId(schema.types?.[0]?.id || "");
+      setCutId("");
+      setCutSubId("");
+      setNote("");
       setQty(1);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, product.id]);
 
+  const cutGroup = schema.cuts?.find((g) => g.id === cutId);
+  const sizeGroup = schema.sizes?.find((g) => g.id === sizeId);
+  const typeGroup = schema.types?.find((g) => g.id === typeId);
+
+  const subMissing = !!(cutGroup?.subRequired && cutGroup.subOptions?.length && !cutSubId);
+
   const handleSubmit = () => {
+    if (subMissing) {
+      toast.error("اختر طريقة التقطيع");
+      return;
+    }
     const opts: Record<string, string> = {};
-    if (size) opts["الحجم"] = size;
-    if (type) opts["النوع"] = type;
-    if (cut) {
-      opts["التقطيع"] = cut === "مقطع" ? `${cut} (${cutKind})` : cut;
+    if (sizeGroup) opts["الحجم"] = sizeGroup.label;
+    if (typeGroup) opts["النوع"] = typeGroup.label;
+    if (cutGroup) {
+      const sub = cutGroup.subOptions?.find((s) => s.id === cutSubId);
+      opts["التقطيع"] = sub ? `${cutGroup.label} - ${sub.label}` : cutGroup.label;
     }
 
     const payload = {
@@ -127,9 +174,10 @@ export function ProductDialog({
       image: product.image,
       price: product.price,
       quantity: qty,
+      pairUnit: product.pairUnit,
       options: Object.keys(opts).length ? opts : undefined,
-      cuttingNote: cut === "مقطع" ? cutNote || undefined : undefined,
-      raw: { size, type, cut, cutKind, cutNote },
+      generalNote: note.trim() || undefined,
+      raw: { sizeId, typeId, cutId, cutSubId, note },
     };
 
     if (editing) {
@@ -142,9 +190,11 @@ export function ProductDialog({
     onOpenChange(false);
   };
 
+  const unitLabel = product.pairUnit ? "جوز" : "كمية";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
+      <DialogContent className="max-h-[92vh] max-w-lg overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-right text-xl">
             {editing ? "تعديل المنتج" : product.name}
@@ -154,99 +204,46 @@ export function ProductDialog({
           <div className="overflow-hidden rounded-xl">
             <img src={product.image} alt={product.name} className="h-52 w-full object-cover" />
           </div>
-          <p className="text-sm text-muted-foreground">{product.description}</p>
+          {product.description && <p className="text-sm text-muted-foreground">{product.description}</p>}
           {product.note && (
             <div className="rounded-xl border border-gold/40 bg-gold/10 px-4 py-3 text-sm font-semibold text-gold">
               ملاحظة: {product.note}
             </div>
           )}
 
-          {(config as any).sizes && (
-            <div className="space-y-2">
-              <div className="text-sm font-bold">الحجم</div>
-              <div className="flex flex-wrap gap-2">
-                {(config as any).sizes.map((o: string) => (
-                  <Chip key={o} active={size === o} onClick={() => setSize(o)}>{o}</Chip>
-                ))}
-              </div>
-            </div>
+          {schema.sizes && schema.sizes.length > 0 && (
+            <GroupChips groups={schema.sizes} value={sizeId} onChange={setSizeId} label="الحجم" />
           )}
-          {(config as any).fixedSize && (
-            <div className="rounded-xl bg-secondary/40 px-4 py-2 text-sm font-bold">
-              الحجم: {(config as any).fixedSize} (متاح فقط)
-            </div>
+          {schema.types && schema.types.length > 0 && (
+            <GroupChips groups={schema.types} value={typeId} onChange={setTypeId} label="النوع" />
           )}
-          {(config as any).types && (
+
+          {schema.cuts && schema.cuts.length > 0 && (
             <div className="space-y-2">
-              <div className="text-sm font-bold">النوع</div>
-              <div className="flex flex-wrap gap-2">
-                {(config as any).types.map((o: string) => (
-                  <Chip key={o} active={type === o} onClick={() => setType(o)}>{o}</Chip>
-                ))}
-              </div>
+              <GroupChips groups={schema.cuts} value={cutId} onChange={(id) => { setCutId(id); setCutSubId(""); }} label="التقطيع" />
+              {cutGroup?.subOptions && (
+                <SubRadio
+                  options={cutGroup.subOptions}
+                  value={cutSubId}
+                  onChange={setCutSubId}
+                  danger={subMissing}
+                />
+              )}
             </div>
           )}
 
-          {cutOptions.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-sm font-bold">التقطيع</div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Chip active={cut === "سليم"} onClick={() => setCut("سليم")}>سليم</Chip>
-                <Chip active={cut === "مقطع"} onClick={() => setCut("مقطع")}>مقطع</Chip>
-                <ChipWithInfo
-                  active={cut === "خلي بالجلد"}
-                  onClick={() => setCut("خلي بالجلد")}
-                  label="خلي بالجلد"
-                  info="بدون عظم"
-                />
-                <ChipWithInfo
-                  active={cut === "خلي شيش"}
-                  onClick={() => setCut("خلي شيش")}
-                  label="خلي شيش"
-                  info="بدون عظم وبدون جلد"
-                />
-              </div>
-            </div>
-          )}
-
-          {cut === "مقطع" && (
-            <div className="space-y-3 rounded-xl border border-primary/30 bg-primary/5 p-3">
-              <div className="text-sm font-bold">طريقة التقطيع</div>
-              <div className="grid grid-cols-2 gap-2">
-                {CUT_KINDS.map((k) => (
-                  <label
-                    key={k}
-                    className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-all ${
-                      cutKind === k
-                        ? "border-primary bg-gradient-primary text-primary-foreground"
-                        : "border-border bg-background"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="cutKind"
-                      checked={cutKind === k}
-                      onChange={() => setCutKind(k)}
-                      className="accent-primary"
-                    />
-                    {k}
-                  </label>
-                ))}
-              </div>
-              <div className="space-y-1.5">
-                <div className="text-xs font-bold">تعليمات إضافية للتقطيع (اختياري)</div>
-                <Textarea
-                  value={cutNote}
-                  onChange={(e) => setCutNote(e.target.value)}
-                  placeholder="مثال: صدور لوحدها، شيل الجلد..."
-                  className="min-h-16"
-                />
-              </div>
-            </div>
-          )}
+          <div className="space-y-1.5">
+            <div className="text-sm font-bold">ملاحظات إضافية (اختياري)</div>
+            <Textarea
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="أي طلب خاص للتقطيع أو التحضير..."
+              className="min-h-16"
+            />
+          </div>
 
           <div className="flex items-center justify-between rounded-xl bg-secondary/40 p-3">
-            <div className="text-sm font-bold">الكمية</div>
+            <div className="text-sm font-bold">{unitLabel}</div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setQty((q) => Math.max(1, q - 1))}
