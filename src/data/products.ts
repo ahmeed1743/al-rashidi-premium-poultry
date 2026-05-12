@@ -45,7 +45,7 @@ export const PRODUCTS: Product[] = [
   { id: "duck-moskovi", name: "بط مسكوفي", description: "بط مسكوفي طازج", price: 160, image: duckImg, section: "duck", subcategory: "بط مسكوفي", customization: "duck" },
   { id: "duck-cubes", name: "مكعبات بط", description: "مكعبات بط جاهزة (ميكس صدور ووراك)", price: 290, image: duckImg, section: "duck", subcategory: "مكعبات", customization: "none" },
   { id: "duck-breast", name: "صدور بط", description: "صدور بط طازجة", price: 280, image: duckImg, section: "duck", subcategory: "صدور", customization: "none" },
-  { id: "duck-thigh", name: "وراك بط", description: "وراك بط طازج", price: 280, image: duckImg, section: "duck", subcategory: "وراك", customization: "none" },
+  { id: "duck-thigh", name: "وراك بط", description: "وراك بط طازج", price: 280, image: duckImg, section: "duck", subcategory: "وراك", customization: "thigh-duck" },
 
   // --- رومي ---
   { id: "turkey-white", name: "رومي أبيض كامل", description: "رومي أبيض كامل", price: 160, image: turkeyImg, section: "turkey", subcategory: "رومي أبيض", customization: "none" },
@@ -55,7 +55,7 @@ export const PRODUCTS: Product[] = [
   { id: "thigh-turkey", name: "وراك رومي", description: "وراك رومي طازج", price: 190, image: turkeyImg, section: "turkey", subcategory: "وراك", customization: "none", note: "وزن الورك من 1.5 إلى 2 كيلو" },
 
   // --- حمام وسمان ---
-  { id: "pigeon", name: "جوز حمام", description: "حمام بلدي طازج (الوحدة جوز)", price: 220, image: mealImg, section: "pigeon", subcategory: "حمام", customization: "none" },
+  { id: "pigeon", name: "حمام بلدي", description: "حمام بلدي طازج", price: 220, image: mealImg, section: "pigeon", subcategory: "حمام", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
   { id: "pigeon-rice", name: "حمام محشي أرز", description: "حمام محشي أرز جاهز", price: 260, image: mealImg, section: "pigeon", subcategory: "حمام محشي", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
   { id: "pigeon-freek", name: "حمام محشي فريك", description: "حمام محشي فريك جاهز", price: 260, image: mealImg, section: "pigeon", subcategory: "حمام محشي", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
   { id: "quail", name: "سمان", description: "سمان طازج", price: 110, image: mealImg, section: "pigeon", subcategory: "سمان", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
@@ -86,8 +86,8 @@ export const PRODUCTS: Product[] = [
   // --- أجزاء ---
   { id: "wing", name: "جناح", description: "أجنحة فراخ", price: 60, image: whiteImg, section: "parts", customization: "none" },
   { id: "ground", name: "مفروم", description: "فراخ مفروم", price: 170, image: whiteImg, section: "parts", customization: "none" },
-  { id: "breast-bone", name: "صدور بالعظم", description: "صدور بالعظم", price: 230, image: whiteImg, section: "parts", customization: "breast-bone", note: "وزن الصدر حدود 600 إلى 800 جرام" },
-  { id: "breast-bone-baladi", name: "صدور بالعظم بلدي", description: "صدور بلدي بالعظم", price: 289, image: baladiImg, section: "parts", customization: "breast-bone", note: "وزن الصدر حدود 600 إلى 800 جرام" },
+  { id: "breast-bone", name: "صدور بالعظم", description: "صدور بالعظم", price: 230, image: whiteImg, section: "parts", customization: "breast-bone", note: "الطلب بالعدد فقط — وزن الصدر حوالي 600 إلى 800 جرام" },
+  { id: "breast-bone-baladi", name: "صدور بالعظم بلدي", description: "صدور بلدي بالعظم", price: 289, image: baladiImg, section: "parts", customization: "breast-bone", note: "الطلب بالعدد فقط — وزن الصدر حوالي 600 إلى 800 جرام" },
   { id: "shish", name: "شيش", description: "شيش طازج", price: 252, image: whiteImg, section: "parts", customization: "none" },
   { id: "panee", name: "بانية", description: "بانية فراخ", price: 259, image: whiteImg, section: "parts", customization: "none" },
   { id: "thigh-bone", name: "وراك بالعظم", description: "وراك بالعظم", price: 107, image: whiteImg, section: "parts", customization: "thigh-bone" },
@@ -96,7 +96,7 @@ export const PRODUCTS: Product[] = [
   { id: "liver", name: "كبدة", description: "كبدة فراخ", price: 135, image: whiteImg, section: "parts", customization: "none" },
   { id: "qawanis", name: "قوانص", description: "قوانص فراخ", price: 110, image: whiteImg, section: "parts", customization: "none" },
   { id: "liver-qawanis", name: "كبد وقوانص (مشكل)", description: "كبدة وقوانص ميكس", price: 123, image: whiteImg, section: "parts", customization: "none" },
-  { id: "fakhayed", name: "فخايد", description: "فخايد فراخ", price: 100, image: whiteImg, section: "parts", customization: "none" },
+  { id: "fakhayed", name: "فخايد", description: "فخايد فراخ", price: 100, image: whiteImg, section: "parts", customization: "fakhayed" },
 
   // --- أخرى ---
   { id: "rabbit", name: "أرانب", description: "أرانب طازجة مختارة بعناية", price: 147, image: rabbitImg, section: "other", customization: "rabbit" },

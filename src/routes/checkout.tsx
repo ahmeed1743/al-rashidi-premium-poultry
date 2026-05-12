@@ -90,7 +90,8 @@ function CheckoutPage() {
     lines.push("");
     lines.push("🛒 *المنتجات*");
     items.forEach((it, i) => {
-      lines.push(`${i + 1}. ${it.name}  ×${it.quantity}${it.pairUnit ? " جوز" : ""}`);
+      const unitTxt = it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : "";
+      lines.push(`${i + 1}. ${it.name}  ×${it.quantity}${unitTxt}`);
       if (it.options) Object.entries(it.options).forEach(([k, v]) => lines.push(`    - ${k}: ${v}`));
       if (it.generalNote) lines.push(`    📝 ${it.generalNote}`);
     });

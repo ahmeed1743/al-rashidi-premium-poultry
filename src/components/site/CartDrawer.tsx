@@ -66,14 +66,17 @@ export function CartDrawer() {
                         <div className="mt-auto flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => updateQty(it.uid, it.quantity - 1)}
+                              onClick={() => updateQty(it.uid, it.quantity - (it.step || 1))}
                               className="flex h-7 w-7 items-center justify-center rounded-full bg-background"
                             >
                               <Minus className="h-3 w-3" />
                             </button>
-                            <span className="w-5 text-center text-sm font-bold">{it.quantity}{it.pairUnit ? " جوز" : ""}</span>
+                            <span className="min-w-10 text-center text-sm font-bold">
+                              {it.quantity}
+                              {it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : ""}
+                            </span>
                             <button
-                              onClick={() => updateQty(it.uid, it.quantity + 1)}
+                              onClick={() => updateQty(it.uid, it.quantity + (it.step || 1))}
                               className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground"
                             >
                               <Plus className="h-3 w-3" />
