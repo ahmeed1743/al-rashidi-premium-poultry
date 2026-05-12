@@ -9,6 +9,9 @@ export interface CartItem {
   price: number;
   quantity: number;
   pairUnit?: boolean;
+  unitId?: string;       // 'kg' | 'count' | undefined
+  unitLabel?: string;    // 'كيلو' | 'قطعة' | undefined
+  step?: number;         // 0.5 for kg, otherwise 1
   options?: Record<string, string>;
   generalNote?: string;
   raw?: {
@@ -16,6 +19,7 @@ export interface CartItem {
     typeId?: string;
     cutId?: string;
     cutSubId?: string;
+    unitId?: string;
     note?: string;
   };
 }
@@ -33,8 +37,8 @@ interface CartState {
   count: () => number;
 }
 
-const makeUid = (item: { productId: string; options?: Record<string, string>; generalNote?: string }) =>
-  `${item.productId}::${JSON.stringify(item.options || {})}::${item.generalNote || ""}::${Date.now()}`;
+const makeUid = (item: { productId: string }) =>
+  `${item.productId}::${Date.now()}::${Math.random().toString(36).slice(2, 7)}`;
 
 export const useCart = create<CartState>()(
   persist(
@@ -51,12 +55,19 @@ export const useCart = create<CartState>()(
       },
       removeItem: (uid) => set({ items: get().items.filter((i) => i.uid !== uid) }),
       updateQty: (uid, qty) =>
-        set({ items: get().items.map((i) => (i.uid === uid ? { ...i, quantity: Math.max(1, qty) } : i)) }),
+        set({
+          items: get().items.map((i) => {
+            if (i.uid !== uid) return i;
+            const step = i.step || 1;
+            const next = Math.max(step, Math.round(qty / step) * step);
+            return { ...i, quantity: parseFloat(next.toFixed(2)) };
+          }),
+        }),
       clear: () => set({ items: [] }),
       setOpen: (v) => set({ isOpen: v }),
       total: () => get().items.reduce((s, i) => s + i.price * i.quantity, 0),
-      count: () => get().items.reduce((s, i) => s + i.quantity, 0),
+      count: () => get().items.length,
     }),
-    { name: "rashidy-cart-v2" },
+    { name: "rashidy-cart-v3" },
   ),
 );
