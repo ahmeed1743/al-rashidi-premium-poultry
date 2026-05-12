@@ -1,73 +1,90 @@
 import { useEffect, useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Minus, Plus, ShoppingCart, Info } from "lucide-react";
 import type { Product } from "@/data/products";
 import { useCart, type CartItem } from "@/store/cart";
-import { getSchema, type Group } from "@/data/customization";
+import { getSchema, type Group, type UnitOption } from "@/data/customization";
 import { toast } from "sonner";
 
-function InfoBtn({ text }: { text: string }) {
-  return (
-    <TooltipProvider delayDuration={100}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <button type="button" className="text-muted-foreground hover:text-primary" aria-label={text}>
-            <Info className="h-4 w-4" />
-          </button>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-[240px] text-right">{text}</TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function Chip({
-  active, onClick, children, danger,
-}: { active: boolean; onClick: () => void; children: React.ReactNode; danger?: boolean }) {
-  return (
+/** Chip whose explanation popover opens automatically when clicked */
+function InfoChip({
+  active, onClick, children, info, danger, size = "md",
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+  info?: string;
+  danger?: boolean;
+  size?: "sm" | "md";
+}) {
+  const [open, setOpen] = useState(false);
+  const handle = () => {
+    onClick();
+    if (info) {
+      setOpen(true);
+      window.setTimeout(() => setOpen(false), 2800);
+    }
+  };
+  const cls =
+    size === "sm"
+      ? "rounded-lg px-3 py-1.5 text-xs"
+      : "rounded-full px-4 py-2 text-sm";
+  const btn = (
     <button
       type="button"
-      onClick={onClick}
-      className={`rounded-full border px-4 py-2 text-sm font-bold transition-all ${
+      onClick={handle}
+      className={`relative inline-flex items-center gap-1.5 border font-bold transition-all ${cls} ${
         active
           ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant"
           : danger
-            ? "border-destructive/40 bg-destructive/5 text-destructive/90 hover:border-destructive"
+            ? "border-destructive/50 bg-destructive/5 text-destructive/90 hover:border-destructive"
             : "border-border bg-secondary/40 text-foreground/80 hover:border-primary/50"
       }`}
     >
       {children}
+      {info && <Info className={size === "sm" ? "h-3 w-3 opacity-70" : "h-3.5 w-3.5 opacity-70"} />}
     </button>
+  );
+  if (!info) return btn;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>{btn}</PopoverTrigger>
+      <PopoverContent side="top" className="w-auto max-w-[260px] text-right text-sm font-semibold">
+        {info}
+      </PopoverContent>
+    </Popover>
   );
 }
 
-function GroupChips({
-  groups, value, onChange, label,
+function GroupRow({
+  groups, value, onChange, label, required,
 }: {
   groups: Group[];
   value: string;
   onChange: (id: string) => void;
   label: string;
+  required?: boolean;
 }) {
   return (
     <div className="space-y-2">
-      <div className="text-sm font-bold">{label}</div>
+      <div className="text-sm font-bold">
+        {label} {required && <span className="text-destructive">*</span>}
+      </div>
       <div className="flex flex-wrap items-center gap-2">
         {groups.map((g) => (
-          <div key={g.id} className="flex items-center gap-1">
-            <Chip active={value === g.id} onClick={() => onChange(g.id)}>{g.label}</Chip>
-            {g.info && <InfoBtn text={g.info} />}
-          </div>
+          <InfoChip key={g.id} active={value === g.id} onClick={() => onChange(g.id)} info={g.info}>
+            {g.label}
+          </InfoChip>
         ))}
       </div>
     </div>
   );
 }
 
-function SubRadio({
+function SubRow({
   options, value, onChange, danger,
 }: {
   options: NonNullable<Group["subOptions"]>;
@@ -77,34 +94,41 @@ function SubRadio({
 }) {
   return (
     <div className={`space-y-2 rounded-xl border p-3 ${danger ? "border-destructive/50 bg-destructive/5" : "border-primary/30 bg-primary/5"}`}>
-      <div className="text-xs font-bold text-muted-foreground">
-        {danger ? "اختر طريقة (مطلوب)" : "اختر طريقة"}
-      </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="text-xs font-bold text-muted-foreground">اختر طريقة (مطلوب)</div>
+      <div className="flex flex-wrap gap-2">
         {options.map((o) => (
-          <label
-            key={o.id}
-            className={`flex cursor-pointer items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-all ${
-              value === o.id
-                ? "border-primary bg-gradient-primary text-primary-foreground"
-                : "border-border bg-background hover:border-primary/40"
+          <InfoChip key={o.id} size="sm" active={value === o.id} onClick={() => onChange(o.id)} info={o.info}>
+            {o.label}
+          </InfoChip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function UnitRow({
+  units, value, onChange,
+}: { units: UnitOption[]; value: string; onChange: (id: string) => void }) {
+  return (
+    <div className="space-y-2">
+      <div className="text-sm font-bold">طريقة الطلب <span className="text-destructive">*</span></div>
+      <div className="grid grid-cols-2 gap-2">
+        {units.map((u) => (
+          <button
+            key={u.id}
+            type="button"
+            onClick={() => onChange(u.id)}
+            className={`rounded-xl border-2 px-4 py-3 text-center text-sm font-extrabold transition-all ${
+              value === u.id
+                ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant"
+                : "border-border bg-secondary/40 hover:border-primary/50"
             }`}
           >
-            <span className="flex items-center gap-2">
-              <input
-                type="radio"
-                checked={value === o.id}
-                onChange={() => onChange(o.id)}
-                className="accent-primary"
-              />
-              {o.label}
-            </span>
-            {o.info && (
-              <span onClick={(e) => e.preventDefault()}>
-                <InfoBtn text={o.info} />
-              </span>
-            )}
-          </label>
+            {u.label}
+            <div className="mt-0.5 text-[10px] font-normal opacity-80">
+              {u.id === "kg" ? "تقدر تطلب كسور (نص كيلو)" : "بالقطعة"}
+            </div>
+          </button>
         ))}
       </div>
     </div>
@@ -123,6 +147,7 @@ export function ProductDialog({
   const replace = useCart((s) => s.replaceItem);
   const schema = useMemo(() => getSchema(product.customization), [product.customization]);
 
+  const [unitId, setUnitId] = useState("");
   const [sizeId, setSizeId] = useState("");
   const [typeId, setTypeId] = useState("");
   const [cutId, setCutId] = useState("");
@@ -133,6 +158,7 @@ export function ProductDialog({
   useEffect(() => {
     if (!open) return;
     if (editing) {
+      setUnitId(editing.raw?.unitId || "");
       setSizeId(editing.raw?.sizeId || "");
       setTypeId(editing.raw?.typeId || "");
       setCutId(editing.raw?.cutId || "");
@@ -140,6 +166,7 @@ export function ProductDialog({
       setNote(editing.generalNote || "");
       setQty(editing.quantity);
     } else {
+      setUnitId(""); // require explicit choice
       setSizeId(schema.sizes?.[0]?.id || "");
       setTypeId(schema.types?.[0]?.id || "");
       setCutId("");
@@ -152,15 +179,26 @@ export function ProductDialog({
   const cutGroup = schema.cuts?.find((g) => g.id === cutId);
   const sizeGroup = schema.sizes?.find((g) => g.id === sizeId);
   const typeGroup = schema.types?.find((g) => g.id === typeId);
+  const unitOpt = schema.units?.find((u) => u.id === unitId);
 
   const subMissing = !!(cutGroup?.subRequired && cutGroup.subOptions?.length && !cutSubId);
+  const unitMissing = !!(schema.units && schema.units.length && !unitId);
+
+  const step = unitOpt?.step || 1;
+  const setQtySafe = (q: number) =>
+    setQty(parseFloat(Math.max(step, Math.round(q / step) * step).toFixed(2)));
+
+  // Reset qty when changing unit (kg → 1, count → 1)
+  useEffect(() => {
+    if (unitId) setQty(step);
+  }, [unitId]); // eslint-disable-line
 
   const handleSubmit = () => {
-    if (subMissing) {
-      toast.error("اختر طريقة التقطيع");
-      return;
-    }
+    if (unitMissing) return toast.error("اختر طريقة الطلب (كيلو أو عدد)");
+    if (subMissing) return toast.error("اختر طريقة التقطيع");
+
     const opts: Record<string, string> = {};
+    if (unitOpt) opts["الطلب"] = unitOpt.label;
     if (sizeGroup) opts["الحجم"] = sizeGroup.label;
     if (typeGroup) opts["النوع"] = typeGroup.label;
     if (cutGroup) {
@@ -175,9 +213,12 @@ export function ProductDialog({
       price: product.price,
       quantity: qty,
       pairUnit: product.pairUnit,
+      unitId: unitOpt?.id,
+      unitLabel: unitOpt?.unitLabel,
+      step,
       options: Object.keys(opts).length ? opts : undefined,
       generalNote: note.trim() || undefined,
-      raw: { sizeId, typeId, cutId, cutSubId, note },
+      raw: { unitId, sizeId, typeId, cutId, cutSubId, note },
     };
 
     if (editing) {
@@ -190,7 +231,7 @@ export function ProductDialog({
     onOpenChange(false);
   };
 
-  const unitLabel = product.pairUnit ? "جوز" : "كمية";
+  const qtyLabel = product.pairUnit ? "جوز" : unitOpt ? unitOpt.unitLabel : "كمية";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -211,23 +252,26 @@ export function ProductDialog({
             </div>
           )}
 
+          {schema.units && schema.units.length > 0 && (
+            <UnitRow units={schema.units} value={unitId} onChange={setUnitId} />
+          )}
           {schema.sizes && schema.sizes.length > 0 && (
-            <GroupChips groups={schema.sizes} value={sizeId} onChange={setSizeId} label="الحجم" />
+            <GroupRow groups={schema.sizes} value={sizeId} onChange={setSizeId} label="الحجم" />
           )}
           {schema.types && schema.types.length > 0 && (
-            <GroupChips groups={schema.types} value={typeId} onChange={setTypeId} label="النوع" />
+            <GroupRow groups={schema.types} value={typeId} onChange={setTypeId} label="النوع" />
           )}
 
           {schema.cuts && schema.cuts.length > 0 && (
             <div className="space-y-2">
-              <GroupChips groups={schema.cuts} value={cutId} onChange={(id) => { setCutId(id); setCutSubId(""); }} label="التقطيع" />
+              <GroupRow
+                groups={schema.cuts}
+                value={cutId}
+                onChange={(id) => { setCutId(id); setCutSubId(""); }}
+                label="التقطيع"
+              />
               {cutGroup?.subOptions && (
-                <SubRadio
-                  options={cutGroup.subOptions}
-                  value={cutSubId}
-                  onChange={setCutSubId}
-                  danger={subMissing}
-                />
+                <SubRow options={cutGroup.subOptions} value={cutSubId} onChange={setCutSubId} danger={subMissing} />
               )}
             </div>
           )}
@@ -243,17 +287,18 @@ export function ProductDialog({
           </div>
 
           <div className="flex items-center justify-between rounded-xl bg-secondary/40 p-3">
-            <div className="text-sm font-bold">{unitLabel}</div>
+            <div className="text-sm font-bold">{qtyLabel}</div>
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setQty((q) => Math.max(1, q - 1))}
+                onClick={() => setQtySafe(qty - step)}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-background"
+                disabled={qty <= step}
               >
                 <Minus className="h-4 w-4" />
               </button>
-              <span className="w-6 text-center font-black">{qty}</span>
+              <span className="min-w-10 text-center font-black">{qty}</span>
               <button
-                onClick={() => setQty((q) => q + 1)}
+                onClick={() => setQtySafe(qty + step)}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground"
               >
                 <Plus className="h-4 w-4" />
