@@ -112,6 +112,7 @@ export type Database = {
           customization: string
           customization_config: Json | null
           description: string
+          discount_percent: number | null
           id: string
           image_url: string
           is_active: boolean
@@ -120,6 +121,7 @@ export type Database = {
           old_price: number | null
           pair_unit: boolean
           price: number
+          sold_out: boolean
           sort_order: number
           subcategory: string | null
           updated_at: string
@@ -131,6 +133,7 @@ export type Database = {
           customization?: string
           customization_config?: Json | null
           description?: string
+          discount_percent?: number | null
           id: string
           image_url?: string
           is_active?: boolean
@@ -139,6 +142,7 @@ export type Database = {
           old_price?: number | null
           pair_unit?: boolean
           price?: number
+          sold_out?: boolean
           sort_order?: number
           subcategory?: string | null
           updated_at?: string
@@ -150,6 +154,7 @@ export type Database = {
           customization?: string
           customization_config?: Json | null
           description?: string
+          discount_percent?: number | null
           id?: string
           image_url?: string
           is_active?: boolean
@@ -158,6 +163,7 @@ export type Database = {
           old_price?: number | null
           pair_unit?: boolean
           price?: number
+          sold_out?: boolean
           sort_order?: number
           subcategory?: string | null
           updated_at?: string
