@@ -21,6 +21,7 @@ export interface Product {
   customization: string;   // preset key from PRESETS
   pairUnit?: boolean;      // true => quantity is "جوز"
   note?: string;
+  soldOut?: boolean;
 }
 
 export const SECTIONS: { id: SectionId; label: string; emoji: string }[] = [

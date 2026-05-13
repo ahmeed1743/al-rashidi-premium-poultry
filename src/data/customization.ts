@@ -29,7 +29,15 @@ const UNIT_KG_OR_COUNT: UnitOption[] = [
   { id: "count", label: "بالعدد", step: 1, unitLabel: "قطعة" },
 ];
 
+const SIZES_4: Group[] = [
+  { id: "small", label: "صغير", info: "صغير الحجم" },
+  { id: "med", label: "وسط", info: "حجم وسط" },
+  { id: "above", label: "فوق الوسط", info: "أكبر شوية من الوسط" },
+  { id: "large", label: "كبير", info: "كبير الحجم" },
+];
+
 const CHICKEN: CustomSchema = {
+  sizes: SIZES_4,
   cuts: [
     { id: "saleem", label: "سليم" },
     {
@@ -60,6 +68,7 @@ const CHICKEN: CustomSchema = {
 };
 
 const RABBIT: CustomSchema = {
+  sizes: SIZES_4,
   cuts: [
     { id: "saleem", label: "سليم" },
     { id: "cut", label: "مقطع" },
@@ -105,11 +114,7 @@ const THIGH_DUCK: CustomSchema = {
 };
 
 const DUCK: CustomSchema = {
-  sizes: [
-    { id: "small", label: "صغير", info: "من 2.5 إلى 3 كيلو" },
-    { id: "med", label: "وسط", info: "من 3 إلى 4 كيلو" },
-    { id: "large", label: "كبير", info: "من 4 إلى 5 كيلو" },
-  ],
+  sizes: SIZES_4,
   cuts: [
     { id: "saleem", label: "سليم" },
     { id: "half-long", label: "نصف بطة بالطول", info: "بطة مقسومة نصفين بالطول" },

@@ -1,23 +1,32 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { PRODUCTS } from "@/data/products";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line,
 } from "recharts";
-import { Users, ShoppingBag, Package, TrendingUp, LogOut, Tag } from "lucide-react";
+import {
+  Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
+  Plus, Pencil, Trash2, Save, RefreshCw,
+} from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "لوحة الإدارة — طيور الرشيدي" }] }),
   component: AdminPage,
 });
 
-interface Stats {
+type Stats = {
   visitsToday: number;
   visitsWeek: number;
+  visitsLive: number; // last 5 min
   ordersToday: number;
   ordersTotal: number;
   productsCount: number;
@@ -25,12 +34,19 @@ interface Stats {
   dailyOrders: { day: string; count: number }[];
   dailyVisits: { day: string; count: number }[];
   recentOrders: any[];
-}
+};
+
+const CATEGORIES = ["chicken", "duck", "turkey", "pigeon", "marinated", "parts", "other"];
+const CAT_LABELS: Record<string, string> = {
+  chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
+  marinated: "متبلات", parts: "أجزاء", other: "أخرى",
+};
+const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
+const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز", "موصى به"];
 
 function AdminPage() {
   const nav = useNavigate();
   const [authed, setAuthed] = useState<boolean | null>(null);
-  const [stats, setStats] = useState<Stats | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -41,56 +57,6 @@ function AdminPage() {
       setAuthed(!!roles?.length);
     })();
   }, []);
-
-  useEffect(() => {
-    if (!authed) return;
-    (async () => {
-      const now = new Date();
-      const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
-      const startWeek = new Date(now); startWeek.setDate(startWeek.getDate() - 6); startWeek.setHours(0, 0, 0, 0);
-
-      const [visitsT, visitsW, ordersT, ordersAll, recent] = await Promise.all([
-        supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
-        supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
-        supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
-        supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region", { count: "exact" }).order("created_at", { ascending: false }).limit(15),
-        supabase.from("orders").select("created_at").gte("created_at", startWeek.toISOString()),
-      ]);
-
-      const days: { day: string; count: number }[] = [];
-      const visitDays: { day: string; count: number }[] = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(now); d.setDate(d.getDate() - i);
-        const k = `${d.getDate()}/${d.getMonth() + 1}`;
-        days.push({ day: k, count: 0 });
-        visitDays.push({ day: k, count: 0 });
-      }
-      (recent.data || []).forEach((o: any) => {
-        const d = new Date(o.created_at);
-        const k = `${d.getDate()}/${d.getMonth() + 1}`;
-        const slot = days.find((x) => x.day === k);
-        if (slot) slot.count++;
-      });
-      (visitsW.data || []).forEach((v: any) => {
-        const d = new Date(v.created_at);
-        const k = `${d.getDate()}/${d.getMonth() + 1}`;
-        const slot = visitDays.find((x) => x.day === k);
-        if (slot) slot.count++;
-      });
-
-      setStats({
-        visitsToday: visitsT.count || 0,
-        visitsWeek: visitsW.data?.length || 0,
-        ordersToday: ordersT.count || 0,
-        ordersTotal: ordersAll.count || 0,
-        productsCount: PRODUCTS.length,
-        offersCount: PRODUCTS.filter((p) => p.oldPrice || p.badge).length,
-        dailyOrders: days,
-        dailyVisits: visitDays,
-        recentOrders: ordersAll.data || [],
-      });
-    })();
-  }, [authed]);
 
   if (authed === null)
     return <SiteLayout><div className="container mx-auto px-4 py-20 text-center text-muted-foreground">جاري التحقق...</div></SiteLayout>;
@@ -116,92 +82,392 @@ function AdminPage() {
           </Button>
         </div>
 
-        {!stats ? (
-          <div className="text-center text-muted-foreground">جاري تحميل البيانات...</div>
-        ) : (
-          <>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat icon={<Users className="h-5 w-5" />} label="زوار اليوم" value={stats.visitsToday} sub={`${stats.visitsWeek} زائر هذا الأسبوع`} />
-              <Stat icon={<ShoppingBag className="h-5 w-5" />} label="طلبات اليوم" value={stats.ordersToday} sub={`${stats.ordersTotal} طلب إجمالي`} />
-              <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} منتج بعرض`} />
-              <Stat icon={<Tag className="h-5 w-5" />} label="العروض" value={stats.offersCount} sub="منتجات مميزة" />
-            </div>
-
-            <div className="mt-6 grid gap-4 lg:grid-cols-2">
-              <Card title="الطلبات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <BarChart data={stats.dailyOrders}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                    <Bar dataKey="count" fill="oklch(0.62 0.23 28)" radius={[6, 6, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Card>
-
-              <Card title="الزوار اليوميين (آخر 7 أيام)" icon={<Users className="h-4 w-4" />}>
-                <ResponsiveContainer width="100%" height={240}>
-                  <LineChart data={stats.dailyVisits}>
-                    <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
-                    <XAxis dataKey="day" tick={{ fontSize: 12 }} />
-                    <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-                    <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                    <Line type="monotone" dataKey="count" stroke="oklch(0.82 0.14 85)" strokeWidth={3} dot={{ r: 4 }} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </Card>
-            </div>
-
-            <Card title="آخر الطلبات" className="mt-6">
-              <div className="overflow-x-auto">
-                <table className="w-full text-right text-sm">
-                  <thead className="text-xs text-muted-foreground">
-                    <tr>
-                      <th className="p-2">التاريخ</th>
-                      <th className="p-2">العميل</th>
-                      <th className="p-2">الهاتف</th>
-                      <th className="p-2">النوع</th>
-                      <th className="p-2">المنطقة</th>
-                      <th className="p-2">الموعد</th>
-                      <th className="p-2">عدد المنتجات</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.recentOrders.slice(0, 15).map((o: any) => (
-                      <tr key={o.id} className="border-t border-border/50">
-                        <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG")}</td>
-                        <td className="p-2 font-bold">{o.customer_name || "—"}</td>
-                        <td className="p-2 font-mono text-xs">{o.phone}</td>
-                        <td className="p-2">{o.mode === "delivery" ? "توصيل" : "استلام"}</td>
-                        <td className="p-2 text-xs">{o.region || "—"}</td>
-                        <td className="p-2 text-xs">{o.time_slot || "—"}</td>
-                        <td className="p-2">{Array.isArray(o.items) ? o.items.length : 0}</td>
-                      </tr>
-                    ))}
-                    {stats.recentOrders.length === 0 && (
-                      <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">لا توجد طلبات بعد</td></tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-
-            <div className="mt-6 rounded-xl border border-gold/40 bg-gold/10 p-4 text-sm text-gold">
-              💡 إدارة المنتجات والأسعار CRUD كاملة — جاهزة للإطلاق في الجولة القادمة (يبني على نفس الجداول).
-            </div>
-          </>
-        )}
+        <Tabs defaultValue="dash" className="w-full">
+          <TabsList>
+            <TabsTrigger value="dash">📊 الداشبورد</TabsTrigger>
+            <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
+          </TabsList>
+          <TabsContent value="dash"><Dashboard /></TabsContent>
+          <TabsContent value="products"><ProductsAdmin /></TabsContent>
+        </Tabs>
       </div>
     </SiteLayout>
   );
 }
 
-function Stat({ icon, label, value, sub }: { icon: React.ReactNode; label: string; value: number; sub?: string }) {
+function Dashboard() {
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 10000);
+    return () => clearInterval(id);
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      const now = new Date();
+      const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
+      const startWeek = new Date(now); startWeek.setDate(startWeek.getDate() - 6); startWeek.setHours(0, 0, 0, 0);
+      const live5 = new Date(now.getTime() - 5 * 60 * 1000);
+
+      const [visitsT, visitsW, visitsLive, ordersT, ordersAll, recent, productsCnt, offersCnt] = await Promise.all([
+        supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
+        supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
+        supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("id", { count: "exact", head: true }),
+        supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
+        supabase.from("products").select("id", { count: "exact", head: true }),
+        supabase.from("products").select("id", { count: "exact", head: true }).not("badge", "is", null),
+      ]);
+
+      const days: { day: string; count: number }[] = [];
+      const visitDays: { day: string; count: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now); d.setDate(d.getDate() - i);
+        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        days.push({ day: k, count: 0 });
+        visitDays.push({ day: k, count: 0 });
+      }
+      const { data: ordersWeek } = await supabase
+        .from("orders").select("created_at").gte("created_at", startWeek.toISOString());
+      (ordersWeek || []).forEach((o: any) => {
+        const d = new Date(o.created_at);
+        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        const slot = days.find((x) => x.day === k);
+        if (slot) slot.count++;
+      });
+      (visitsW.data || []).forEach((v: any) => {
+        const d = new Date(v.created_at);
+        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        const slot = visitDays.find((x) => x.day === k);
+        if (slot) slot.count++;
+      });
+
+      const liveSessions = new Set((visitsLive.data || []).map((r: any) => r.session_id).filter(Boolean));
+
+      setStats({
+        visitsToday: visitsT.count || 0,
+        visitsWeek: visitsW.data?.length || 0,
+        visitsLive: liveSessions.size,
+        ordersToday: ordersT.count || 0,
+        ordersTotal: ordersAll.count || 0,
+        productsCount: productsCnt.count || 0,
+        offersCount: offersCnt.count || 0,
+        dailyOrders: days,
+        dailyVisits: visitDays,
+        recentOrders: recent.data || [],
+      });
+    })();
+  }, [tick]);
+
+  if (!stats) return <div className="py-10 text-center text-muted-foreground">جاري تحميل البيانات...</div>;
+
+  return (
+    <div className="mt-4 space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat icon={<Users className="h-5 w-5" />} label="زوار حاليون (5 د)" value={stats.visitsLive} sub="🟢 يتحدث كل 10 ثوان" pulse />
+        <Stat icon={<Users className="h-5 w-5" />} label="زوار اليوم" value={stats.visitsToday} sub={`${stats.visitsWeek} زائر هذا الأسبوع`} />
+        <Stat icon={<ShoppingBag className="h-5 w-5" />} label="طلبات اليوم" value={stats.ordersToday} sub={`${stats.ordersTotal} طلب إجمالي`} />
+        <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} منتج بشارة`} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="الطلبات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
+          <ResponsiveContainer width="100%" height={240}>
+            <BarChart data={stats.dailyOrders}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Bar dataKey="count" fill="oklch(0.62 0.23 28)" radius={[6, 6, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card title="الزوار اليوميين (آخر 7 أيام)" icon={<Users className="h-4 w-4" />}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={stats.dailyVisits}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Line type="monotone" dataKey="count" stroke="oklch(0.82 0.14 85)" strokeWidth={3} dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
+
+      <Card title="آخر الطلبات">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="p-2">التاريخ</th>
+                <th className="p-2">العميل</th>
+                <th className="p-2">الهاتف</th>
+                <th className="p-2">النوع</th>
+                <th className="p-2">المنطقة</th>
+                <th className="p-2">الموعد</th>
+                <th className="p-2">عدد المنتجات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {stats.recentOrders.map((o: any) => (
+                <tr key={o.id} className="border-t border-border/50">
+                  <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG")}</td>
+                  <td className="p-2 font-bold">{o.customer_name || "—"}</td>
+                  <td className="p-2 font-mono text-xs">{o.phone}</td>
+                  <td className="p-2">{o.mode === "delivery" ? "توصيل" : "استلام"}</td>
+                  <td className="p-2 text-xs">{o.region || "—"}</td>
+                  <td className="p-2 text-xs">{o.time_slot || "—"}</td>
+                  <td className="p-2">{Array.isArray(o.items) ? o.items.length : 0}</td>
+                </tr>
+              ))}
+              {stats.recentOrders.length === 0 && (
+                <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">لا توجد طلبات بعد</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
+type ProductRow = {
+  id: string; name: string; description: string; price: number; old_price: number | null;
+  image_url: string; category: string; subcategory: string | null; badge: string | null;
+  customization: string; pair_unit: boolean; note: string | null; sort_order: number;
+  is_active: boolean; sold_out: boolean; discount_percent: number | null;
+};
+
+function emptyProduct(): ProductRow {
+  return {
+    id: "", name: "", description: "", price: 0, old_price: null, image_url: "",
+    category: "chicken", subcategory: null, badge: null, customization: "none",
+    pair_unit: false, note: null, sort_order: 0, is_active: true, sold_out: false, discount_percent: null,
+  };
+}
+
+function ProductsAdmin() {
+  const [rows, setRows] = useState<ProductRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState("");
+  const [cat, setCat] = useState<string>("all");
+  const [editing, setEditing] = useState<ProductRow | null>(null);
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("products").select("*").order("category").order("sort_order");
+    if (error) toast.error(error.message);
+    setRows((data as any) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = useMemo(() => rows.filter((r) =>
+    (cat === "all" || r.category === cat) &&
+    (!filter || r.name.includes(filter) || r.id.includes(filter))
+  ), [rows, filter, cat]);
+
+  const remove = async (id: string) => {
+    if (!confirm("متأكد من الحذف؟")) return;
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("تم الحذف");
+    load();
+  };
+
+  const toggleActive = async (r: ProductRow) => {
+    const { error } = await supabase.from("products").update({ is_active: !r.is_active }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const toggleSold = async (r: ProductRow) => {
+    const { error } = await supabase.from("products").update({ sold_out: !r.sold_out }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    toast.success(!r.sold_out ? "تم وضع شارة نفذ" : "تم إزالة الشارة");
+    load();
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <Input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="🔍 بحث..."
+          className="max-w-xs"
+        />
+        <select value={cat} onChange={(e) => setCat(e.target.value)} className="rounded-md border border-input bg-background px-3 py-2 text-sm">
+          <option value="all">كل التصنيفات</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
+        </select>
+        <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" />تحديث</Button>
+        <div className="flex-1" />
+        <Button onClick={() => setEditing(emptyProduct())} className="bg-gradient-primary text-primary-foreground">
+          <Plus className="ml-1 h-4 w-4" /> منتج جديد
+        </Button>
+      </div>
+
+      <Card title={`المنتجات (${filtered.length})`}>
+        {loading ? (
+          <div className="py-10 text-center text-muted-foreground">جاري التحميل...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2">الاسم</th>
+                  <th className="p-2">التصنيف</th>
+                  <th className="p-2">السعر</th>
+                  <th className="p-2">شارة</th>
+                  <th className="p-2">نشط</th>
+                  <th className="p-2">نفذ</th>
+                  <th className="p-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((r) => (
+                  <tr key={r.id} className="border-t border-border/50">
+                    <td className="p-2 font-bold">{r.name}<div className="text-[10px] text-muted-foreground font-mono">{r.id}</div></td>
+                    <td className="p-2 text-xs">{CAT_LABELS[r.category] || r.category}</td>
+                    <td className="p-2 font-bold">{r.price > 0 ? `${r.price} ج` : "—"}</td>
+                    <td className="p-2 text-xs">{r.badge || "—"}</td>
+                    <td className="p-2"><Switch checked={r.is_active} onCheckedChange={() => toggleActive(r)} /></td>
+                    <td className="p-2"><Switch checked={r.sold_out} onCheckedChange={() => toggleSold(r)} /></td>
+                    <td className="p-2">
+                      <div className="flex gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => setEditing(r)}><Pencil className="h-4 w-4" /></Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">لا توجد منتجات</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {editing && (
+        <ProductEditor
+          row={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: () => void; onSaved: () => void }) {
+  const [r, setR] = useState<ProductRow>(row);
+  const isNew = !row.id;
+  const [saving, setSaving] = useState(false);
+
+  const set = <K extends keyof ProductRow>(k: K, v: ProductRow[K]) => setR((x) => ({ ...x, [k]: v }));
+
+  const save = async () => {
+    if (!r.name.trim()) return toast.error("الاسم مطلوب");
+    const id = isNew ? (r.id || r.name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w-\u0600-\u06FF]/g, "")) : r.id;
+    setSaving(true);
+    const payload = { ...r, id, price: Number(r.price) || 0, old_price: r.old_price ? Number(r.old_price) : null };
+    const { error } = isNew
+      ? await supabase.from("products").insert(payload)
+      : await supabase.from("products").update(payload).eq("id", row.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(isNew ? "تمت الإضافة" : "تم الحفظ");
+    onSaved();
+  };
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-h-[90vh] max-w-xl overflow-y-auto text-right">
+        <DialogHeader>
+          <DialogTitle>{isNew ? "منتج جديد" : `تعديل: ${row.name}`}</DialogTitle>
+        </DialogHeader>
+
+        <div className="grid gap-3 py-2">
+          {isNew && (
+            <Field label="المعرف (id) — اختياري"><Input value={r.id} onChange={(e) => set("id", e.target.value)} placeholder="يُولّد تلقائياً من الاسم" /></Field>
+          )}
+          <Field label="الاسم *"><Input value={r.name} onChange={(e) => set("name", e.target.value)} /></Field>
+          <Field label="الوصف"><Textarea value={r.description} onChange={(e) => set("description", e.target.value)} className="min-h-16" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="السعر"><Input type="number" step="0.01" value={r.price} onChange={(e) => set("price", parseFloat(e.target.value) || 0)} /></Field>
+            <Field label="السعر القديم (اختياري)"><Input type="number" step="0.01" value={r.old_price ?? ""} onChange={(e) => set("old_price", e.target.value ? parseFloat(e.target.value) : null)} /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="التصنيف">
+              <select value={r.category} onChange={(e) => set("category", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                {CATEGORIES.map((c) => <option key={c} value={c}>{CAT_LABELS[c]}</option>)}
+              </select>
+            </Field>
+            <Field label="نمط التخصيص">
+              <select value={r.customization} onChange={(e) => set("customization", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                {PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="الفئة الفرعية"><Input value={r.subcategory || ""} onChange={(e) => set("subcategory", e.target.value || null)} /></Field>
+            <Field label="ترتيب">
+              <Input type="number" value={r.sort_order} onChange={(e) => set("sort_order", parseInt(e.target.value) || 0)} />
+            </Field>
+          </div>
+          <Field label="رابط الصورة (اختياري)"><Input value={r.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="فاضي = صورة افتراضية حسب التصنيف" /></Field>
+
+          <Field label="الشارة (Badge)">
+            <select value={r.badge || ""} onChange={(e) => set("badge", e.target.value || null)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+              {BADGES.map((b) => <option key={b} value={b}>{b || "— بدون —"}</option>)}
+            </select>
+          </Field>
+
+          <Field label="ملاحظة على المنتج"><Input value={r.note || ""} onChange={(e) => set("note", e.target.value || null)} /></Field>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Toggle label="نشط" v={r.is_active} on={(v) => set("is_active", v)} />
+            <Toggle label="تم النفاذ" v={r.sold_out} on={(v) => set("sold_out", v)} />
+            <Toggle label="بيع بالجوز" v={r.pair_unit} on={(v) => set("pair_unit", v)} />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>إلغاء</Button>
+          <Button onClick={save} disabled={saving} className="bg-gradient-primary text-primary-foreground">
+            <Save className="ml-1 h-4 w-4" />{saving ? "..." : "حفظ"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="block space-y-1.5"><div className="text-xs font-bold text-muted-foreground">{label}</div>{children}</label>;
+}
+function Toggle({ label, v, on }: { label: string; v: boolean; on: (b: boolean) => void }) {
+  return (
+    <label className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2">
+      <span className="text-sm font-bold">{label}</span>
+      <Switch checked={v} onCheckedChange={on} />
+    </label>
+  );
+}
+
+function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: number; sub?: string; pulse?: boolean }) {
   return (
     <div className="rounded-2xl bg-gradient-card p-5 shadow-card">
       <div className="mb-2 flex items-center gap-2 text-muted-foreground">
-        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary">{icon}</div>
+        <div className={`flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary ${pulse ? "animate-pulse" : ""}`}>{icon}</div>
         <span className="text-sm font-semibold">{label}</span>
       </div>
       <div className="text-3xl font-black">{value}</div>
@@ -209,7 +475,6 @@ function Stat({ icon, label, value, sub }: { icon: React.ReactNode; label: strin
     </div>
   );
 }
-
 function Card({ title, icon, className = "", children }: { title: string; icon?: React.ReactNode; className?: string; children: React.ReactNode }) {
   return (
     <div className={`rounded-2xl bg-card p-5 shadow-card ${className}`}>
