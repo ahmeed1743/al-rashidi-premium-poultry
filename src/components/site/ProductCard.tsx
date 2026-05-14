@@ -1,12 +1,32 @@
 import { motion } from "framer-motion";
-import { Plus, Phone } from "lucide-react";
+import { Plus, Phone, Flame, Sparkles, BadgePercent, Star } from "lucide-react";
 import { useState } from "react";
 import type { Product } from "@/data/products";
 import { ProductDialog } from "./ProductDialog";
 
+function badgeStyle(label?: string) {
+  if (!label) return null;
+  if (label.includes("نفذ"))
+    return { cls: "bg-destructive text-destructive-foreground", icon: <Flame className="h-3 w-3" /> };
+  if (label.includes("الأكثر") || label.includes("مبيع"))
+    return { cls: "bg-orange-500 text-white", icon: <Flame className="h-3 w-3" /> };
+  if (label.includes("خصم"))
+    return { cls: "bg-emerald-600 text-white", icon: <BadgePercent className="h-3 w-3" /> };
+  if (label.includes("جديد"))
+    return { cls: "bg-blue-600 text-white", icon: <Sparkles className="h-3 w-3" /> };
+  if (label.includes("مميز") || label.includes("موصى"))
+    return { cls: "bg-gradient-gold text-background", icon: <Star className="h-3 w-3" /> };
+  return { cls: "bg-gradient-gold text-background", icon: <Sparkles className="h-3 w-3" /> };
+}
+
 export function ProductCard({ product }: { product: Product }) {
   const [open, setOpen] = useState(false);
   const sold = product.soldOut;
+  const badgeLabel = sold ? "تم النفاذ" : product.badge || undefined;
+  const bs = badgeStyle(badgeLabel);
+  const discount = product.oldPrice && product.price
+    ? Math.max(0, Math.round((1 - product.price / product.oldPrice) * 100))
+    : 0;
   return (
     <>
       <motion.div
@@ -23,18 +43,14 @@ export function ProductCard({ product }: { product: Product }) {
             loading="lazy"
             className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 ${sold ? "grayscale" : ""}`}
           />
-          {sold ? (
-            <div className="absolute top-3 right-3 rounded-full bg-destructive px-3 py-1 text-xs font-black text-destructive-foreground shadow-card">
-              تم النفاذ
-            </div>
-          ) : product.badge && (
-            <div className="absolute top-3 right-3 rounded-full bg-gradient-gold px-3 py-1 text-xs font-black text-background shadow-card">
-              {product.badge}
+          {bs && (
+            <div className={`absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-black shadow-elegant ${bs.cls}`}>
+              {bs.icon}{badgeLabel}
             </div>
           )}
-          {product.oldPrice && !product.badge && !sold && (
-            <div className="absolute top-3 left-3 rounded-full bg-primary px-3 py-1 text-xs font-bold text-primary-foreground">
-              عرض
+          {discount > 0 && !sold && (
+            <div className="absolute top-3 left-3 rounded-full bg-primary px-2.5 py-1 text-[11px] font-black text-primary-foreground shadow-elegant">
+              -{discount}%
             </div>
           )}
         </div>

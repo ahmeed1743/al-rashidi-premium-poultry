@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { ArrowLeft, Truck, ShieldCheck, Award, Clock } from "lucide-react";
+import { ArrowLeft, Truck, ShieldCheck, Award, Clock, MapPin, Phone, MessageCircle } from "lucide-react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { Marquee, OffersMarquee } from "@/components/site/Marquee";
 import { HScroll } from "@/components/site/HScroll";
@@ -70,6 +70,49 @@ function Home() {
       <HScroll title="المتبلات" products={marinades} viewAllTo="/marinades" />
       <HScroll title="الأجزاء" products={parts} viewAllTo="/products" />
       <HScroll title="منتجات مميزة" products={featured} viewAllTo="/products" />
+
+      <section className="container mx-auto px-4 py-12">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <h2 className="text-3xl font-black md:text-4xl">الفرع الرئيسي</h2>
+            <p className="mt-1 text-muted-foreground">كامب شيزار — الإسكندرية</p>
+          </div>
+          <Link to="/branches" className="text-sm font-bold text-primary hover:underline">كل الفروع ←</Link>
+        </div>
+        <div className="grid items-stretch gap-5 md:grid-cols-5">
+          <div className="md:col-span-2 flex flex-col gap-3 rounded-2xl bg-gradient-card p-6 shadow-card">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-primary text-primary-foreground">
+              <MapPin className="h-6 w-6" />
+            </div>
+            <h3 className="text-xl font-extrabold">طيور الرشيدي - كامب شيزار</h3>
+            <p className="text-sm text-muted-foreground">الإسكندرية - مفتوح من 8 صباحاً حتى 8 مساءً</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" /><a dir="ltr" href="tel:01223381405" className="font-mono font-bold">01223381405</a></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" /><a dir="ltr" href="tel:01099342344" className="font-mono font-bold">01099342344</a></div>
+              <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-primary" /><a dir="ltr" href="tel:035900717" className="font-mono font-bold">035900717</a></div>
+            </div>
+            <div className="mt-auto grid grid-cols-2 gap-2 pt-2">
+              <a href="https://wa.me/201223381405" target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-1 rounded-xl bg-emerald-600 text-sm font-bold text-white">
+                <MessageCircle className="h-4 w-4" /> واتساب
+              </a>
+              <a href="https://maps.app.goo.gl/7dN6WUnmkbq5kWK27" target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-1 rounded-xl bg-gradient-primary text-sm font-extrabold text-primary-foreground shadow-elegant">
+                <MapPin className="h-4 w-4" /> الاتجاهات
+              </a>
+            </div>
+          </div>
+          <div className="md:col-span-3 overflow-hidden rounded-2xl border border-border shadow-card">
+            <iframe
+              title="موقع كامب شيزار"
+              src="https://www.google.com/maps?q=Tyor%20Elrshedy%20Camp%20Shizar%20Alexandria&output=embed"
+              width="100%"
+              height="100%"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="block min-h-[320px] w-full border-0"
+            />
+          </div>
+        </div>
+      </section>
 
       <section className="container mx-auto px-4 py-16">
         <div className="mb-10 text-center">

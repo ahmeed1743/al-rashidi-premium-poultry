@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
-  Plus, Pencil, Trash2, Save, RefreshCw,
+  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,7 +42,18 @@ const CAT_LABELS: Record<string, string> = {
   marinated: "متبلات", parts: "أجزاء", other: "أخرى",
 };
 const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
-const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز", "موصى به"];
+const PRESET_LABELS: Record<string, string> = {
+  none: "بدون تخصيص",
+  chicken: "فراخ (تقطيع كامل)",
+  rabbit: "أرانب (سليم/مقطع)",
+  duck: "بط (مع نصف بطة)",
+  "thigh-bone": "وراك بالعظم",
+  "thigh-duck": "وراك بط (وحدة فقط)",
+  fakhayed: "فخايد (وحدة فقط)",
+  "breast-bone": "صدور بالعظم",
+  dababees: "دبابيس",
+};
+const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز", "موصى به", "تم النفاذ"];
 
 function AdminPage() {
   const nav = useNavigate();
@@ -82,13 +93,19 @@ function AdminPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="dash" className="w-full">
-          <TabsList>
-            <TabsTrigger value="dash">📊 الداشبورد</TabsTrigger>
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="flex flex-wrap">
+            <TabsTrigger value="overview">📊 نظرة عامة</TabsTrigger>
             <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
+            <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
+            <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
+            <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
           </TabsList>
-          <TabsContent value="dash"><Dashboard /></TabsContent>
+          <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
+          <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
+          <TabsContent value="orders"><OrdersTab /></TabsContent>
+          <TabsContent value="visitors"><VisitorsTab /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
@@ -119,7 +136,7 @@ function Dashboard() {
         supabase.from("orders").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
         supabase.from("products").select("id", { count: "exact", head: true }),
-        supabase.from("products").select("id", { count: "exact", head: true }).not("badge", "is", null),
+        supabase.from("products").select("id", { count: "exact", head: true }).not("old_price", "is", null),
       ]);
 
       const days: { day: string; count: number }[] = [];
@@ -170,7 +187,7 @@ function Dashboard() {
         <Stat icon={<Users className="h-5 w-5" />} label="زوار حاليون (5 د)" value={stats.visitsLive} sub="🟢 يتحدث كل 10 ثوان" pulse />
         <Stat icon={<Users className="h-5 w-5" />} label="زوار اليوم" value={stats.visitsToday} sub={`${stats.visitsWeek} زائر هذا الأسبوع`} />
         <Stat icon={<ShoppingBag className="h-5 w-5" />} label="طلبات اليوم" value={stats.ordersToday} sub={`${stats.ordersTotal} طلب إجمالي`} />
-        <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} منتج بشارة`} />
+        <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -240,6 +257,7 @@ type ProductRow = {
   image_url: string; category: string; subcategory: string | null; badge: string | null;
   customization: string; pair_unit: boolean; note: string | null; sort_order: number;
   is_active: boolean; sold_out: boolean; discount_percent: number | null;
+  customization_config: any | null;
 };
 
 function emptyProduct(): ProductRow {
@@ -247,10 +265,11 @@ function emptyProduct(): ProductRow {
     id: "", name: "", description: "", price: 0, old_price: null, image_url: "",
     category: "chicken", subcategory: null, badge: null, customization: "none",
     pair_unit: false, note: null, sort_order: 0, is_active: true, sold_out: false, discount_percent: null,
+    customization_config: null,
   };
 }
 
-function ProductsAdmin() {
+function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -269,8 +288,9 @@ function ProductsAdmin() {
 
   const filtered = useMemo(() => rows.filter((r) =>
     (cat === "all" || r.category === cat) &&
+    (!onlyOffers || r.old_price != null || r.badge) &&
     (!filter || r.name.includes(filter) || r.id.includes(filter))
-  ), [rows, filter, cat]);
+  ), [rows, filter, cat, onlyOffers]);
 
   const remove = async (id: string) => {
     if (!confirm("متأكد من الحذف؟")) return;
@@ -413,7 +433,7 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
             </Field>
             <Field label="نمط التخصيص">
               <select value={r.customization} onChange={(e) => set("customization", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                {PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+                {PRESETS.map((p) => <option key={p} value={p}>{PRESET_LABELS[p] || p}</option>)}
               </select>
             </Field>
           </div>
@@ -438,6 +458,31 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
             <Toggle label="تم النفاذ" v={r.sold_out} on={(v) => set("sold_out", v)} />
             <Toggle label="بيع بالجوز" v={r.pair_unit} on={(v) => set("pair_unit", v)} />
           </div>
+
+          <div className="rounded-xl border border-border bg-secondary/20 p-3">
+            <div className="mb-2 text-sm font-extrabold">⚙️ خيارات التخصيص (تتحكم فيها لحظياً)</div>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+              <Toggle label="نص جوز (للحمام)" v={!!r.customization_config?.halfPair} on={(v) => set("customization_config", { ...(r.customization_config || {}), halfPair: v })} />
+              <Toggle label="السماح بنص كيلو" v={r.customization_config?.allowHalfKg !== false} on={(v) => set("customization_config", { ...(r.customization_config || {}), allowHalfKg: v })} />
+              <Toggle label="إخفاء اختيار الحجم" v={!!r.customization_config?.hideSize} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideSize: v })} />
+              <Toggle label="إخفاء التقطيع" v={!!r.customization_config?.hideCuts} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideCuts: v })} />
+              <Toggle label="إخفاء السلخ" v={!!r.customization_config?.hideSalkh} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideSalkh: v })} />
+              <Toggle label="إخفاء الخلي" v={!!r.customization_config?.hideKhaly} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideKhaly: v })} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Field label="إجبار الوحدة (لو فيه اختيار كيلو/عدد)">
+                <select
+                  value={r.customization_config?.forceUnit || ""}
+                  onChange={(e) => set("customization_config", { ...(r.customization_config || {}), forceUnit: e.target.value || undefined })}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">— الاختيار للعميل —</option>
+                  <option value="kg">بالكيلو فقط</option>
+                  <option value="count">بالعدد فقط</option>
+                </select>
+              </Field>
+            </div>
+          </div>
         </div>
 
         <DialogFooter>
@@ -454,6 +499,174 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return <label className="block space-y-1.5"><div className="text-xs font-bold text-muted-foreground">{label}</div>{children}</label>;
 }
+
+/* ------------------------------------------------------------------ */
+/* Orders Tab                                                          */
+/* ------------------------------------------------------------------ */
+function OrdersTab() {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("orders").select("*").order("created_at", { ascending: false }).limit(200);
+    setOrders(data || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black">آخر 200 طلب</h2>
+        <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" /> تحديث</Button>
+      </div>
+      <Card title={`الطلبات (${orders.length})`}>
+        {loading ? <div className="py-10 text-center text-muted-foreground">جاري التحميل...</div> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2">التاريخ</th>
+                  <th className="p-2">العميل</th>
+                  <th className="p-2">الهاتف</th>
+                  <th className="p-2">النوع</th>
+                  <th className="p-2">الإجمالي</th>
+                  <th className="p-2">المنتجات</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o) => (
+                  <tr key={o.id} className="border-t border-border/50">
+                    <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG")}</td>
+                    <td className="p-2 font-bold">{o.customer_name || "—"}</td>
+                    <td className="p-2 font-mono text-xs">{o.phone}</td>
+                    <td className="p-2">{o.mode === "delivery" ? "توصيل" : "استلام"}</td>
+                    <td className="p-2 font-bold">{Number(o.total || 0).toFixed(2)} ج</td>
+                    <td className="p-2">{Array.isArray(o.items) ? o.items.length : 0}</td>
+                  </tr>
+                ))}
+                {orders.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">لا توجد طلبات</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Visitors Tab                                                        */
+/* ------------------------------------------------------------------ */
+function VisitorsTab() {
+  const [data, setData] = useState<any | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 8000);
+    return () => clearInterval(id);
+  }, []);
+  useEffect(() => {
+    (async () => {
+      const now = new Date();
+      const live = new Date(now.getTime() - 5 * 60 * 1000);
+      const day = new Date(now); day.setHours(0, 0, 0, 0);
+      const week = new Date(now); week.setDate(week.getDate() - 6); week.setHours(0, 0, 0, 0);
+
+      const [liveR, dayR, weekR, recent] = await Promise.all([
+        supabase.from("visit_events").select("session_id").gte("created_at", live.toISOString()),
+        supabase.from("visit_events").select("path, session_id").gte("created_at", day.toISOString()),
+        supabase.from("visit_events").select("created_at").gte("created_at", week.toISOString()),
+        supabase.from("visit_events").select("path, created_at, referrer, user_agent").order("created_at", { ascending: false }).limit(40),
+      ]);
+
+      const byPath: Record<string, number> = {};
+      (dayR.data || []).forEach((r: any) => { byPath[r.path] = (byPath[r.path] || 0) + 1; });
+      const topPaths = Object.entries(byPath).sort((a, b) => b[1] - a[1]).slice(0, 10);
+
+      const days: { day: string; count: number }[] = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(now); d.setDate(d.getDate() - i);
+        days.push({ day: `${d.getDate()}/${d.getMonth() + 1}`, count: 0 });
+      }
+      (weekR.data || []).forEach((v: any) => {
+        const d = new Date(v.created_at);
+        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        const slot = days.find((x) => x.day === k);
+        if (slot) slot.count++;
+      });
+
+      const liveSessions = new Set((liveR.data || []).map((r: any) => r.session_id).filter(Boolean));
+      const daySessions = new Set((dayR.data || []).map((r: any) => r.session_id).filter(Boolean));
+
+      setData({
+        live: liveSessions.size,
+        day: dayR.data?.length || 0,
+        daySessions: daySessions.size,
+        week: weekR.data?.length || 0,
+        days, topPaths, recent: recent.data || [],
+      });
+    })();
+  }, [tick]);
+
+  if (!data) return <div className="py-10 text-center text-muted-foreground">جاري التحميل...</div>;
+
+  return (
+    <div className="mt-4 space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat icon={<Activity className="h-5 w-5" />} label="زوار حاليون (آخر 5 د)" value={data.live} sub="🟢 يتحدث كل 8 ثوان" pulse />
+        <Stat icon={<Users className="h-5 w-5" />} label="زيارات اليوم" value={data.day} sub={`${data.daySessions} زائر فريد`} />
+        <Stat icon={<TrendingUp className="h-5 w-5" />} label="هذا الأسبوع" value={data.week} sub="آخر 7 أيام" />
+        <Stat icon={<Clock className="h-5 w-5" />} label="مسارات مختلفة" value={data.topPaths.length} sub="صفحات تمت زيارتها اليوم" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card title="الزيارات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
+          <ResponsiveContainer width="100%" height={240}>
+            <LineChart data={data.days}>
+              <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+              <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
+              <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Line type="monotone" dataKey="count" stroke="oklch(0.82 0.14 85)" strokeWidth={3} dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+        <Card title="أكثر الصفحات زيارة (اليوم)">
+          <ul className="space-y-1.5 text-sm">
+            {data.topPaths.map(([p, c]: any) => (
+              <li key={p} className="flex items-center justify-between rounded-lg bg-secondary/40 px-3 py-2">
+                <code className="text-xs">{p}</code>
+                <span className="font-black text-primary">{c}</span>
+              </li>
+            ))}
+            {data.topPaths.length === 0 && <li className="py-6 text-center text-muted-foreground">لا توجد بيانات بعد</li>}
+          </ul>
+        </Card>
+      </div>
+
+      <Card title="آخر 40 زيارة">
+        <div className="overflow-x-auto">
+          <table className="w-full text-right text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr><th className="p-2">الوقت</th><th className="p-2">الصفحة</th><th className="p-2">من</th></tr>
+            </thead>
+            <tbody>
+              {data.recent.map((v: any, i: number) => (
+                <tr key={i} className="border-t border-border/50">
+                  <td className="p-2 text-xs text-muted-foreground">{new Date(v.created_at).toLocaleString("ar-EG")}</td>
+                  <td className="p-2 font-mono text-xs">{v.path}</td>
+                  <td className="p-2 text-xs text-muted-foreground">{v.referrer || "مباشر"}</td>
+                </tr>
+              ))}
+              {data.recent.length === 0 && <tr><td colSpan={3} className="p-6 text-center text-muted-foreground">لا توجد زيارات بعد</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function Toggle({ label, v, on }: { label: string; v: boolean; on: (b: boolean) => void }) {
   return (
     <label className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2">

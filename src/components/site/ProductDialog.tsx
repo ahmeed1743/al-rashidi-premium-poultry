@@ -4,9 +4,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Minus, Plus, ShoppingCart, Info } from "lucide-react";
-import type { Product } from "@/data/products";
+import type { Product, ProductConfig } from "@/data/products";
 import { useCart, type CartItem } from "@/store/cart";
-import { getSchema, type Group, type UnitOption } from "@/data/customization";
+import { getSchema, type Group, type UnitOption, type CustomSchema } from "@/data/customization";
 import { toast } from "sonner";
 
 /** Chip whose explanation popover opens automatically when clicked */
@@ -145,7 +145,28 @@ export function ProductDialog({
 }) {
   const add = useCart((s) => s.addItem);
   const replace = useCart((s) => s.replaceItem);
-  const schema = useMemo(() => getSchema(product.customization), [product.customization]);
+  const schema = useMemo<CustomSchema>(() => {
+    const base = getSchema(product.customization);
+    const cfg: ProductConfig = product.config || {};
+    let units = base.units;
+    if (cfg.allowHalfKg === false && units) {
+      units = units.map((u) => (u.id === "kg" ? { ...u, step: 1 } : u));
+    }
+    if (cfg.hideUnit) units = undefined;
+    if (cfg.forceUnit && base.units) {
+      const f = base.units.find((u) => u.id === cfg.forceUnit);
+      units = f ? [f] : units;
+    }
+    let cuts = base.cuts;
+    if (cfg.hideCuts) cuts = undefined;
+    else if (cuts && (cfg.hideSalkh || cfg.hideKhaly)) {
+      cuts = cuts.filter((g) =>
+        !(cfg.hideSalkh && g.id === "salkh") && !(cfg.hideKhaly && g.id === "khaly"),
+      );
+    }
+    const sizes = cfg.hideSize ? undefined : base.sizes;
+    return { ...base, units, cuts, sizes };
+  }, [product.customization, product.config]);
 
   const [unitId, setUnitId] = useState("");
   const [sizeId, setSizeId] = useState("");
@@ -166,7 +187,7 @@ export function ProductDialog({
       setNote(editing.generalNote || "");
       setQty(editing.quantity);
     } else {
-      setUnitId(""); // require explicit choice
+      setUnitId(schema.units && schema.units.length === 1 ? schema.units[0].id : "");
       setSizeId(schema.sizes?.[0]?.id || "");
       setTypeId(schema.types?.[0]?.id || "");
       setCutId("");
@@ -184,7 +205,8 @@ export function ProductDialog({
   const subMissing = !!(cutGroup?.subRequired && cutGroup.subOptions?.length && !cutSubId);
   const unitMissing = !!(schema.units && schema.units.length && !unitId);
 
-  const step = unitOpt?.step || 1;
+  const halfPair = !!product.config?.halfPair;
+  const step = unitOpt?.step || (product.pairUnit && halfPair ? 0.5 : 1);
   const setQtySafe = (q: number) =>
     setQty(parseFloat(Math.max(step, Math.round(q / step) * step).toFixed(2)));
 

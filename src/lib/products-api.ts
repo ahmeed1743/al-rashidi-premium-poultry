@@ -1,4 +1,4 @@
-import { PRODUCTS, type Product, type SectionId } from "@/data/products";
+import { PRODUCTS, type Product, type SectionId, type ProductConfig } from "@/data/products";
 import { supabase } from "@/integrations/supabase/client";
 import whiteImg from "@/assets/p-white-chicken.jpg";
 import baladiImg from "@/assets/p-baladi.jpg";
@@ -37,5 +37,7 @@ export async function fetchProducts(includeInactive = false): Promise<Product[]>
     pairUnit: !!r.pair_unit,
     note: r.note || undefined,
     soldOut: !!r.sold_out,
+    config: (r.customization_config as ProductConfig) || undefined,
+    discountPercent: r.discount_percent ? Number(r.discount_percent) : undefined,
   } as any));
 }
