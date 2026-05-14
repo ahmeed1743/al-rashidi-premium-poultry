@@ -187,7 +187,7 @@ export function ProductDialog({
       setNote(editing.generalNote || "");
       setQty(editing.quantity);
     } else {
-      setUnitId(""); // require explicit choice
+      setUnitId(schema.units && schema.units.length === 1 ? schema.units[0].id : "");
       setSizeId(schema.sizes?.[0]?.id || "");
       setTypeId(schema.types?.[0]?.id || "");
       setCutId("");
