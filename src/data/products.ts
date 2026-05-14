@@ -8,6 +8,17 @@ import mealImg from "@/assets/p-meal.jpg";
 
 export type SectionId = "chicken" | "duck" | "turkey" | "pigeon" | "marinated" | "parts" | "other";
 
+export type ProductConfig = {
+  halfPair?: boolean;       // pair unit can be 0.5
+  allowHalfKg?: boolean;    // false => kg step=1 (default true)
+  hideSize?: boolean;
+  hideCuts?: boolean;
+  hideSalkh?: boolean;
+  hideKhaly?: boolean;
+  hideUnit?: boolean;
+  forceUnit?: "kg" | "count";
+};
+
 export interface Product {
   id: string;
   name: string;
@@ -22,6 +33,8 @@ export interface Product {
   pairUnit?: boolean;      // true => quantity is "جوز"
   note?: string;
   soldOut?: boolean;
+  config?: ProductConfig;
+  discountPercent?: number;
 }
 
 export const SECTIONS: { id: SectionId; label: string; emoji: string }[] = [
@@ -56,7 +69,7 @@ export const PRODUCTS: Product[] = [
   { id: "thigh-turkey", name: "وراك رومي", description: "وراك رومي طازج", price: 190, image: turkeyImg, section: "turkey", subcategory: "وراك", customization: "none", note: "وزن الورك من 1.5 إلى 2 كيلو" },
 
   // --- حمام وسمان ---
-  { id: "pigeon", name: "حمام بلدي", description: "حمام بلدي طازج", price: 220, image: mealImg, section: "pigeon", subcategory: "حمام", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
+  { id: "pigeon", name: "حمام بلدي", description: "حمام بلدي طازج", price: 220, image: mealImg, section: "pigeon", subcategory: "حمام", customization: "none", pairUnit: true, note: "تقدر تطلب نص جوز كمان", config: { halfPair: true } },
   { id: "pigeon-rice", name: "حمام محشي أرز", description: "حمام محشي أرز جاهز", price: 260, image: mealImg, section: "pigeon", subcategory: "حمام محشي", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
   { id: "pigeon-freek", name: "حمام محشي فريك", description: "حمام محشي فريك جاهز", price: 260, image: mealImg, section: "pigeon", subcategory: "حمام محشي", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
   { id: "quail", name: "سمان", description: "سمان طازج", price: 110, image: mealImg, section: "pigeon", subcategory: "سمان", customization: "none", pairUnit: true, note: "الطلب بالجوز فقط" },
