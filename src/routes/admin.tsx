@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
-  Plus, Pencil, Trash2, Save, RefreshCw,
+  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -42,7 +42,18 @@ const CAT_LABELS: Record<string, string> = {
   marinated: "متبلات", parts: "أجزاء", other: "أخرى",
 };
 const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
-const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز", "موصى به"];
+const PRESET_LABELS: Record<string, string> = {
+  none: "بدون تخصيص",
+  chicken: "فراخ (تقطيع كامل)",
+  rabbit: "أرانب (سليم/مقطع)",
+  duck: "بط (مع نصف بطة)",
+  "thigh-bone": "وراك بالعظم",
+  "thigh-duck": "وراك بط (وحدة فقط)",
+  fakhayed: "فخايد (وحدة فقط)",
+  "breast-bone": "صدور بالعظم",
+  dababees: "دبابيس",
+};
+const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز", "موصى به", "تم النفاذ"];
 
 function AdminPage() {
   const nav = useNavigate();
@@ -82,13 +93,19 @@ function AdminPage() {
           </Button>
         </div>
 
-        <Tabs defaultValue="dash" className="w-full">
-          <TabsList>
-            <TabsTrigger value="dash">📊 الداشبورد</TabsTrigger>
+        <Tabs defaultValue="overview" className="w-full">
+          <TabsList className="flex flex-wrap">
+            <TabsTrigger value="overview">📊 نظرة عامة</TabsTrigger>
             <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
+            <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
+            <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
+            <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
           </TabsList>
-          <TabsContent value="dash"><Dashboard /></TabsContent>
+          <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
+          <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
+          <TabsContent value="orders"><OrdersTab /></TabsContent>
+          <TabsContent value="visitors"><VisitorsTab /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
@@ -119,7 +136,7 @@ function Dashboard() {
         supabase.from("orders").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
         supabase.from("products").select("id", { count: "exact", head: true }),
-        supabase.from("products").select("id", { count: "exact", head: true }).not("badge", "is", null),
+        supabase.from("products").select("id", { count: "exact", head: true }).not("old_price", "is", null),
       ]);
 
       const days: { day: string; count: number }[] = [];
@@ -170,7 +187,7 @@ function Dashboard() {
         <Stat icon={<Users className="h-5 w-5" />} label="زوار حاليون (5 د)" value={stats.visitsLive} sub="🟢 يتحدث كل 10 ثوان" pulse />
         <Stat icon={<Users className="h-5 w-5" />} label="زوار اليوم" value={stats.visitsToday} sub={`${stats.visitsWeek} زائر هذا الأسبوع`} />
         <Stat icon={<ShoppingBag className="h-5 w-5" />} label="طلبات اليوم" value={stats.ordersToday} sub={`${stats.ordersTotal} طلب إجمالي`} />
-        <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} منتج بشارة`} />
+        <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
