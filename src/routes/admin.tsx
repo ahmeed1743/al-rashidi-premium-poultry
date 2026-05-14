@@ -433,7 +433,7 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
             </Field>
             <Field label="نمط التخصيص">
               <select value={r.customization} onChange={(e) => set("customization", e.target.value)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
-                {PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
+                {PRESETS.map((p) => <option key={p} value={p}>{PRESET_LABELS[p] || p}</option>)}
               </select>
             </Field>
           </div>
@@ -457,6 +457,31 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
             <Toggle label="نشط" v={r.is_active} on={(v) => set("is_active", v)} />
             <Toggle label="تم النفاذ" v={r.sold_out} on={(v) => set("sold_out", v)} />
             <Toggle label="بيع بالجوز" v={r.pair_unit} on={(v) => set("pair_unit", v)} />
+          </div>
+
+          <div className="rounded-xl border border-border bg-secondary/20 p-3">
+            <div className="mb-2 text-sm font-extrabold">⚙️ خيارات التخصيص (تتحكم فيها لحظياً)</div>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+              <Toggle label="نص جوز (للحمام)" v={!!r.customization_config?.halfPair} on={(v) => set("customization_config", { ...(r.customization_config || {}), halfPair: v })} />
+              <Toggle label="السماح بنص كيلو" v={r.customization_config?.allowHalfKg !== false} on={(v) => set("customization_config", { ...(r.customization_config || {}), allowHalfKg: v })} />
+              <Toggle label="إخفاء اختيار الحجم" v={!!r.customization_config?.hideSize} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideSize: v })} />
+              <Toggle label="إخفاء التقطيع" v={!!r.customization_config?.hideCuts} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideCuts: v })} />
+              <Toggle label="إخفاء السلخ" v={!!r.customization_config?.hideSalkh} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideSalkh: v })} />
+              <Toggle label="إخفاء الخلي" v={!!r.customization_config?.hideKhaly} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideKhaly: v })} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <Field label="إجبار الوحدة (لو فيه اختيار كيلو/عدد)">
+                <select
+                  value={r.customization_config?.forceUnit || ""}
+                  onChange={(e) => set("customization_config", { ...(r.customization_config || {}), forceUnit: e.target.value || undefined })}
+                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">— الاختيار للعميل —</option>
+                  <option value="kg">بالكيلو فقط</option>
+                  <option value="count">بالعدد فقط</option>
+                </select>
+              </Field>
+            </div>
           </div>
         </div>
 
