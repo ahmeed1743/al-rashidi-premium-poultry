@@ -257,6 +257,7 @@ type ProductRow = {
   image_url: string; category: string; subcategory: string | null; badge: string | null;
   customization: string; pair_unit: boolean; note: string | null; sort_order: number;
   is_active: boolean; sold_out: boolean; discount_percent: number | null;
+  customization_config: any | null;
 };
 
 function emptyProduct(): ProductRow {
@@ -264,10 +265,11 @@ function emptyProduct(): ProductRow {
     id: "", name: "", description: "", price: 0, old_price: null, image_url: "",
     category: "chicken", subcategory: null, badge: null, customization: "none",
     pair_unit: false, note: null, sort_order: 0, is_active: true, sold_out: false, discount_percent: null,
+    customization_config: null,
   };
 }
 
-function ProductsAdmin() {
+function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
   const [rows, setRows] = useState<ProductRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("");
@@ -286,8 +288,9 @@ function ProductsAdmin() {
 
   const filtered = useMemo(() => rows.filter((r) =>
     (cat === "all" || r.category === cat) &&
+    (!onlyOffers || r.old_price != null || r.badge) &&
     (!filter || r.name.includes(filter) || r.id.includes(filter))
-  ), [rows, filter, cat]);
+  ), [rows, filter, cat, onlyOffers]);
 
   const remove = async (id: string) => {
     if (!confirm("متأكد من الحذف؟")) return;
