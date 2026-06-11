@@ -277,6 +277,7 @@ function Dashboard() {
           </table>
         </div>
       </Card>
+      </div>
     </div>
   );
 }
