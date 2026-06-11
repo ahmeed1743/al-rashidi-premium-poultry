@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,14 @@ import {
   Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { captureToPdf } from "@/lib/report-pdf";
+
+const DEFAULT_SIZE_OPTIONS = [
+  { id: "small", label: "صغير" },
+  { id: "med", label: "وسط" },
+  { id: "above", label: "فوق الوسط" },
+  { id: "large", label: "كبير" },
+];
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "لوحة الإدارة — طيور الرشيدي" }] }),
@@ -115,6 +123,8 @@ function AdminPage() {
 function Dashboard() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [tick, setTick] = useState(0);
+  const reportRef = useRef<HTMLDivElement>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 10000);
@@ -183,6 +193,25 @@ function Dashboard() {
 
   return (
     <div className="mt-4 space-y-6">
+      <div className="flex justify-end">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={exporting}
+          onClick={async () => {
+            if (!reportRef.current) return;
+            setExporting(true);
+            try {
+              await captureToPdf(reportRef.current, `report-overview-${new Date().toISOString().slice(0,10)}.pdf`, "تقرير شامل");
+              toast.success("تم تنزيل التقرير");
+            } catch (e: any) { toast.error(e.message || "فشل التصدير"); }
+            finally { setExporting(false); }
+          }}
+        >
+          <Download className="ml-1 h-4 w-4" /> {exporting ? "جاري التحضير..." : "تنزيل تقرير شامل (PDF)"}
+        </Button>
+      </div>
+      <div ref={reportRef} className="space-y-6 bg-background p-2">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat icon={<Users className="h-5 w-5" />} label="زوار حاليون (5 د)" value={stats.visitsLive} sub="🟢 يتحدث كل 10 ثوان" pulse />
         <Stat icon={<Users className="h-5 w-5" />} label="زوار اليوم" value={stats.visitsToday} sub={`${stats.visitsWeek} زائر هذا الأسبوع`} />
