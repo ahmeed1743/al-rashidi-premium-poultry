@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logoAsset from "@/assets/logo.jpg.asset.json";
+import { ThemeToggle } from "./ThemeToggle";
 
 const links = [
   { to: "/", label: "الرئيسية" },
@@ -69,13 +70,16 @@ export function Navbar() {
           })}
         </nav>
 
-        <button
-          onClick={() => setMobile((v) => !v)}
-          className="inline-flex h-11 w-11 items-center justify-center rounded-full glass lg:hidden"
-          aria-label="القائمة"
-        >
-          {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setMobile((v) => !v)}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full glass lg:hidden"
+            aria-label="القائمة"
+          >
+            {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
+        </div>
       </div>
 
       <AnimatePresence>

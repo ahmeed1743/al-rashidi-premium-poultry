@@ -169,6 +169,9 @@ export function ProductDialog({
       cuts = [...(cuts || []), ...extra];
     }
     let sizes = cfg.hideSize ? undefined : base.sizes;
+    if (sizes && cfg.enabledSizes && cfg.enabledSizes.length) {
+      sizes = sizes.filter((s) => cfg.enabledSizes!.includes(s.id));
+    }
     if (cfg.customSizes && cfg.customSizes.length) {
       sizes = cfg.customSizes.map((s) => ({ id: s.id || s.label, label: s.label, info: s.info }));
     }
@@ -213,7 +216,10 @@ export function ProductDialog({
   const unitMissing = !!(schema.units && schema.units.length && !unitId);
 
   const halfPair = !!product.config?.halfPair;
-  const step = unitOpt?.step || (product.pairUnit && halfPair ? 0.5 : 1);
+  const cfgStep = product.config?.qtyStep;
+  const step = cfgStep && cfgStep > 0
+    ? cfgStep
+    : (unitOpt?.step || (product.pairUnit && halfPair ? 0.5 : 1));
   const setQtySafe = (q: number) =>
     setQty(parseFloat(Math.max(step, Math.round(q / step) * step).toFixed(2)));
 

@@ -18,7 +18,6 @@ export function StoryCarousel() {
     <section className="container mx-auto px-4 py-10">
       <div className="mb-5 text-center">
         <h2 className="text-2xl font-black md:text-3xl">قصة طيور الرشيدي</h2>
-        <p className="mt-1 text-sm text-muted-foreground">من قصبة نجاح إلى المنافسة الشريفة — رشيدي الغلابة</p>
       </div>
       <div className="relative mx-auto max-w-3xl overflow-hidden rounded-3xl shadow-elegant aspect-square">
         <AnimatePresence mode="wait">
