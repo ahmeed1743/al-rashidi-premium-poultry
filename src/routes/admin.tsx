@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
-  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock,
+  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -443,7 +443,9 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
               <Input type="number" value={r.sort_order} onChange={(e) => set("sort_order", parseInt(e.target.value) || 0)} />
             </Field>
           </div>
-          <Field label="رابط الصورة (اختياري)"><Input value={r.image_url} onChange={(e) => set("image_url", e.target.value)} placeholder="فاضي = صورة افتراضية حسب التصنيف" /></Field>
+          <Field label="صورة المنتج">
+            <ImageUploader value={r.image_url} onChange={(url) => set("image_url", url)} productId={r.id || r.name || "new"} />
+          </Field>
 
           <Field label="الشارة (Badge)">
             <select value={r.badge || ""} onChange={(e) => set("badge", e.target.value || null)} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
@@ -482,6 +484,21 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
                 </select>
               </Field>
             </div>
+
+            <div className="mt-3 space-y-3 border-t border-border pt-3">
+              <ListEditor
+                label="أحجام مخصصة (تستبدل الافتراضية)"
+                hint="سطر لكل حجم. الصيغة: الاسم | شرح اختياري"
+                value={r.customization_config?.customSizes || []}
+                onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customSizes: v })}
+              />
+              <ListEditor
+                label="تقطيعات إضافية (تنضاف للموجود)"
+                hint="سطر لكل تقطيع. الصيغة: الاسم | شرح اختياري"
+                value={r.customization_config?.customCuts || []}
+                onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customCuts: v })}
+              />
+            </div>
           </div>
         </div>
 
@@ -514,12 +531,60 @@ function OrdersTab() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const regionStats = useMemo(() => {
+    const map = new Map<string, { count: number; total: number }>();
+    orders.forEach((o) => {
+      const key = (o.region || (o.mode === "pickup" ? `استلام: ${o.branch || "—"}` : "غير محدد")).trim();
+      const cur = map.get(key) || { count: 0, total: 0 };
+      cur.count++; cur.total += Number(o.total || 0);
+      map.set(key, cur);
+    });
+    return Array.from(map.entries()).map(([region, v]) => ({ region, ...v })).sort((a, b) => b.count - a.count);
+  }, [orders]);
+
+  const exportRegionsCSV = () => {
+    const header = "المنطقة,عدد الطلبات,إجمالي المبيعات (ج)\n";
+    const body = regionStats.map((r) => `"${r.region}",${r.count},${r.total.toFixed(2)}`).join("\n");
+    const blob = new Blob(["\ufeff" + header + body], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `region-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    toast.success("تم تنزيل التقرير");
+  };
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black">آخر 200 طلب</h2>
-        <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" /> تحديث</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportRegionsCSV}><Download className="ml-1 h-4 w-4" /> تقرير المناطق (CSV)</Button>
+          <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" /> تحديث</Button>
+        </div>
       </div>
+
+      <Card title="📍 أكثر المناطق طلباً" icon={<MapPin className="h-4 w-4" />}>
+        {regionStats.length === 0 ? (
+          <div className="py-4 text-center text-sm text-muted-foreground">لا توجد بيانات بعد</div>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {regionStats.slice(0, 10).map((r, i) => (
+              <div key={r.region} className="flex items-center justify-between rounded-lg bg-secondary/30 px-3 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-primary text-xs font-black text-primary-foreground">{i + 1}</span>
+                  <span className="font-bold">{r.region}</span>
+                </div>
+                <div className="text-left">
+                  <div className="text-sm font-extrabold text-primary">{r.count} طلب</div>
+                  <div className="text-[10px] text-muted-foreground">{r.total.toFixed(0)} ج</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       <Card title={`الطلبات (${orders.length})`}>
         {loading ? <div className="py-10 text-center text-muted-foreground">جاري التحميل...</div> : (
           <div className="overflow-x-auto">
@@ -530,6 +595,7 @@ function OrdersTab() {
                   <th className="p-2">العميل</th>
                   <th className="p-2">الهاتف</th>
                   <th className="p-2">النوع</th>
+                  <th className="p-2">المنطقة</th>
                   <th className="p-2">الإجمالي</th>
                   <th className="p-2">المنتجات</th>
                 </tr>
@@ -541,11 +607,12 @@ function OrdersTab() {
                     <td className="p-2 font-bold">{o.customer_name || "—"}</td>
                     <td className="p-2 font-mono text-xs">{o.phone}</td>
                     <td className="p-2">{o.mode === "delivery" ? "توصيل" : "استلام"}</td>
+                    <td className="p-2 text-xs">{o.region || o.branch || "—"}</td>
                     <td className="p-2 font-bold">{Number(o.total || 0).toFixed(2)} ج</td>
                     <td className="p-2">{Array.isArray(o.items) ? o.items.length : 0}</td>
                   </tr>
                 ))}
-                {orders.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-muted-foreground">لا توجد طلبات</td></tr>}
+                {orders.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">لا توجد طلبات</td></tr>}
               </tbody>
             </table>
           </div>
@@ -696,6 +763,78 @@ function Card({ title, icon, className = "", children }: { title: string; icon?:
         <h3 className="font-black">{title}</h3>
       </div>
       {children}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Image uploader (Supabase storage: product-images)                   */
+/* ------------------------------------------------------------------ */
+function ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
+  const [uploading, setUploading] = useState(false);
+  const onFile = async (file: File) => {
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const safe = productId.replace(/[^\w-]/g, "-") || "p";
+      const path = `${safe}-${Date.now()}.${ext}`;
+      const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data } = supabase.storage.from("product-images").getPublicUrl(path);
+      onChange(data.publicUrl);
+      toast.success("تم رفع الصورة");
+    } catch (e: any) {
+      toast.error(e.message || "فشل الرفع");
+    } finally {
+      setUploading(false);
+    }
+  };
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-3">
+        {value ? (
+          <img src={value} alt="" className="h-16 w-16 rounded-lg object-cover border border-border" />
+        ) : (
+          <div className="h-16 w-16 rounded-lg border-2 border-dashed border-border bg-secondary/30 flex items-center justify-center text-xs text-muted-foreground">لا صورة</div>
+        )}
+        <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-bold hover:bg-secondary">
+          <Upload className="h-4 w-4" />
+          {uploading ? "جاري الرفع..." : "رفع صورة"}
+          <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
+        </label>
+        {value && (
+          <Button type="button" size="icon" variant="ghost" onClick={() => onChange("")}><X className="h-4 w-4" /></Button>
+        )}
+      </div>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* List editor for custom sizes / cuts                                 */
+/* ------------------------------------------------------------------ */
+function ListEditor({ label, hint, value, onChange }: {
+  label: string; hint: string;
+  value: { id: string; label: string; info?: string }[];
+  onChange: (v: { id: string; label: string; info?: string }[]) => void;
+}) {
+  const text = (value || []).map((it) => it.info ? `${it.label} | ${it.info}` : it.label).join("\n");
+  const parse = (raw: string) =>
+    raw.split("\n").map((line) => line.trim()).filter(Boolean).map((line, i) => {
+      const [lab, ...rest] = line.split("|").map((s) => s.trim());
+      return { id: lab.toLowerCase().replace(/\s+/g, "-") || `c${i}`, label: lab, info: rest.join(" | ") || undefined };
+    });
+  return (
+    <div>
+      <div className="mb-1 text-xs font-bold">{label}</div>
+      <Textarea
+        value={text}
+        onChange={(e) => onChange(parse(e.target.value))}
+        placeholder={hint}
+        className="min-h-20 text-sm"
+      />
+      <div className="mt-1 text-[10px] text-muted-foreground">{hint}</div>
     </div>
   );
 }
