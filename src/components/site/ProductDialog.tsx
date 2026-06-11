@@ -164,7 +164,14 @@ export function ProductDialog({
         !(cfg.hideSalkh && g.id === "salkh") && !(cfg.hideKhaly && g.id === "khaly"),
       );
     }
-    const sizes = cfg.hideSize ? undefined : base.sizes;
+    if (cfg.customCuts && cfg.customCuts.length) {
+      const extra = cfg.customCuts.map((c) => ({ id: c.id || c.label, label: c.label, info: c.info }));
+      cuts = [...(cuts || []), ...extra];
+    }
+    let sizes = cfg.hideSize ? undefined : base.sizes;
+    if (cfg.customSizes && cfg.customSizes.length) {
+      sizes = cfg.customSizes.map((s) => ({ id: s.id || s.label, label: s.label, info: s.info }));
+    }
     return { ...base, units, cuts, sizes };
   }, [product.customization, product.config]);
 
