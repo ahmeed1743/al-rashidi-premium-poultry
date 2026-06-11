@@ -7,7 +7,8 @@ import { Marquee, OffersMarquee } from "@/components/site/Marquee";
 import { HScroll } from "@/components/site/HScroll";
 import { fetchProducts } from "@/lib/products-api";
 import { PRODUCTS } from "@/data/products";
-import heroImg from "@/assets/hero.jpg";
+import logoAsset from "@/assets/logo.jpg.asset.json";
+import { StoryCarousel } from "@/components/site/StoryCarousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/")({
@@ -57,12 +58,14 @@ function Home() {
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }} className="relative">
             <div className="absolute inset-0 rounded-full bg-gradient-primary opacity-30 blur-3xl" />
-            <img src={heroImg} alt="طيور الرشيدي" width={1600} height={1024} className="relative rounded-3xl object-cover shadow-elegant" />
+            <img src={logoAsset.url} alt="طيور الرشيدي" width={1024} height={1024} className="relative mx-auto rounded-3xl object-cover shadow-elegant" />
           </motion.div>
         </div>
       </section>
 
       <Marquee items={["🍗 فراخ طازجة", "🦆 بط فلاحي ومسكوفي", "🦃 رومي طازج", "🕊️ حمام وسمان", "🌶️ متبلات يومية", "🚚 توصيل سريع"]} />
+
+      <StoryCarousel />
 
       {offers.length > 0 && <OffersMarquee products={offers} />}
 
