@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import logoAsset from "@/assets/logo.jpg.asset.json";
 
 const links = [
   { to: "/", label: "الرئيسية" },
@@ -33,9 +34,11 @@ export function Navbar() {
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20">
         <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-primary shadow-glow">
-            <span className="text-lg font-black text-primary-foreground">ر</span>
-          </div>
+          <img
+            src={logoAsset.url}
+            alt="طيور الرشيدي"
+            className="h-11 w-11 rounded-full object-cover shadow-glow ring-2 ring-primary/40"
+          />
           <div className="leading-tight">
             <div className="text-base font-extrabold md:text-lg">طيور الرشيدي</div>
             <div className="text-[10px] text-muted-foreground md:text-xs">الجودة الأصلية</div>

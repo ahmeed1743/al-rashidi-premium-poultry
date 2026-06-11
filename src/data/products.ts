@@ -17,6 +17,10 @@ export type ProductConfig = {
   hideKhaly?: boolean;
   hideUnit?: boolean;
   forceUnit?: "kg" | "count";
+  /** أحجام مخصصة من الأدمن — تبدل الافتراضية لو موجودة */
+  customSizes?: { id: string; label: string; info?: string }[];
+  /** تقطيعات مخصصة من الأدمن — تنضاف لاختيارات التقطيع */
+  customCuts?: { id: string; label: string; info?: string }[];
 };
 
 export interface Product {
