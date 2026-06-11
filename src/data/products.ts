@@ -17,6 +17,10 @@ export type ProductConfig = {
   hideKhaly?: boolean;
   hideUnit?: boolean;
   forceUnit?: "kg" | "count";
+  /** خطوة الكمية: 0.5 / 1 / 1.5 / 2 ... — تتجاوز الافتراضي */
+  qtyStep?: number;
+  /** أحجام افتراضية المفعّلة (ids من المجموعة الافتراضية: small/med/above/large). فاضي = الكل */
+  enabledSizes?: string[];
   /** أحجام مخصصة من الأدمن — تبدل الافتراضية لو موجودة */
   customSizes?: { id: string; label: string; info?: string }[];
   /** تقطيعات مخصصة من الأدمن — تنضاف لاختيارات التقطيع */
