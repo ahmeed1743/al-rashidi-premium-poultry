@@ -516,12 +516,41 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
             </div>
 
             <div className="mt-3 space-y-3 border-t border-border pt-3">
-              <ListEditor
-                label="أحجام مخصصة (تستبدل الافتراضية)"
-                hint="سطر لكل حجم. الصيغة: الاسم | شرح اختياري"
-                value={r.customization_config?.customSizes || []}
-                onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customSizes: v })}
-              />
+              <div>
+                <div className="mb-2 text-xs font-bold">الأحجام المتاحة للعميل</div>
+                <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                  {DEFAULT_SIZE_OPTIONS.map((s) => {
+                    const enabled = r.customization_config?.enabledSizes;
+                    const on = !enabled || enabled.length === 0 ? true : enabled.includes(s.id);
+                    return (
+                      <label key={s.id} className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 px-3 py-2">
+                        <span className="text-sm font-bold">{s.label}</span>
+                        <Switch
+                          checked={on}
+                          onCheckedChange={(v) => {
+                            const current = (r.customization_config?.enabledSizes && r.customization_config.enabledSizes.length)
+                              ? [...r.customization_config.enabledSizes]
+                              : DEFAULT_SIZE_OPTIONS.map((x) => x.id);
+                            const next = v ? Array.from(new Set([...current, s.id])) : current.filter((x) => x !== s.id);
+                            set("customization_config", { ...(r.customization_config || {}), enabledSizes: next });
+                          }}
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="mt-1 text-[10px] text-muted-foreground">قفّل اللي مش متاح في المنتج ده — البقية بتظهر للعميل.</div>
+              </div>
+              <Field label="خطوة الكمية (مثال: 0.5 / 1 / 1.5 / 2)">
+                <Input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={r.customization_config?.qtyStep ?? ""}
+                  onChange={(e) => set("customization_config", { ...(r.customization_config || {}), qtyStep: e.target.value ? parseFloat(e.target.value) : undefined })}
+                  placeholder="افتراضي حسب الوحدة"
+                />
+              </Field>
               <ListEditor
                 label="تقطيعات إضافية (تنضاف للموجود)"
                 hint="سطر لكل تقطيع. الصيغة: الاسم | شرح اختياري"
@@ -553,6 +582,8 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function OrdersTab() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const customersRef = useRef<HTMLDivElement>(null);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -584,16 +615,42 @@ function OrdersTab() {
     toast.success("تم تنزيل التقرير");
   };
 
+  const customerStats = useMemo(() => {
+    const map = new Map<string, { name: string; phone: string; count: number; total: number; last: string; regions: Set<string> }>();
+    orders.forEach((o) => {
+      const key = (o.phone || "—").trim();
+      const cur = map.get(key) || { name: o.customer_name || "—", phone: key, count: 0, total: 0, last: o.created_at, regions: new Set<string>() };
+      cur.count++; cur.total += Number(o.total || 0);
+      if (o.created_at > cur.last) cur.last = o.created_at;
+      if (o.region) cur.regions.add(o.region);
+      if (o.customer_name) cur.name = o.customer_name;
+      map.set(key, cur);
+    });
+    return Array.from(map.values()).sort((a, b) => b.count - a.count);
+  }, [orders]);
+
+  const exportCustomersPdf = async () => {
+    if (!customersRef.current) return;
+    setExportingPdf(true);
+    try {
+      await captureToPdf(customersRef.current, `customers-report-${new Date().toISOString().slice(0,10)}.pdf`, "تقرير العملاء");
+      toast.success("تم تنزيل تقرير العملاء");
+    } catch (e: any) { toast.error(e.message || "فشل التصدير"); }
+    finally { setExportingPdf(false); }
+  };
+
   return (
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black">آخر 200 طلب</h2>
         <div className="flex gap-2">
           <Button variant="outline" size="sm" onClick={exportRegionsCSV}><Download className="ml-1 h-4 w-4" /> تقرير المناطق (CSV)</Button>
+          <Button variant="outline" size="sm" disabled={exportingPdf} onClick={exportCustomersPdf}><Download className="ml-1 h-4 w-4" /> تقرير العملاء (PDF)</Button>
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" /> تحديث</Button>
         </div>
       </div>
 
+      <div ref={customersRef} className="space-y-4 bg-background p-2">
       <Card title="📍 أكثر المناطق طلباً" icon={<MapPin className="h-4 w-4" />}>
         {regionStats.length === 0 ? (
           <div className="py-4 text-center text-sm text-muted-foreground">لا توجد بيانات بعد</div>
@@ -614,6 +671,41 @@ function OrdersTab() {
           </div>
         )}
       </Card>
+      <Card title="👤 أفضل العملاء" icon={<Users className="h-4 w-4" />}>
+        {customerStats.length === 0 ? (
+          <div className="py-4 text-center text-sm text-muted-foreground">لا توجد بيانات بعد</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2">#</th>
+                  <th className="p-2">العميل</th>
+                  <th className="p-2">الهاتف</th>
+                  <th className="p-2">عدد الطلبات</th>
+                  <th className="p-2">الإجمالي</th>
+                  <th className="p-2">آخر طلب</th>
+                  <th className="p-2">المناطق</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customerStats.slice(0, 30).map((c, i) => (
+                  <tr key={c.phone} className="border-t border-border/50">
+                    <td className="p-2 font-black">{i + 1}</td>
+                    <td className="p-2 font-bold">{c.name}</td>
+                    <td className="p-2 font-mono text-xs">{c.phone}</td>
+                    <td className="p-2 font-extrabold text-primary">{c.count}</td>
+                    <td className="p-2 font-bold">{c.total.toFixed(0)} ج</td>
+                    <td className="p-2 text-xs text-muted-foreground">{new Date(c.last).toLocaleDateString("ar-EG")}</td>
+                    <td className="p-2 text-xs">{Array.from(c.regions).slice(0, 3).join("، ") || "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+      </div>
 
       <Card title={`الطلبات (${orders.length})`}>
         {loading ? <div className="py-10 text-center text-muted-foreground">جاري التحميل...</div> : (
