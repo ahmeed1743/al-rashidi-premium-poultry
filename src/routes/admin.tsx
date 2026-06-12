@@ -709,35 +709,7 @@ function OrdersTab() {
 
       <Card title={`الطلبات (${orders.length})`}>
         {loading ? <div className="py-10 text-center text-muted-foreground">جاري التحميل...</div> : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-right text-sm">
-              <thead className="text-xs text-muted-foreground">
-                <tr>
-                  <th className="p-2">التاريخ</th>
-                  <th className="p-2">العميل</th>
-                  <th className="p-2">الهاتف</th>
-                  <th className="p-2">النوع</th>
-                  <th className="p-2">المنطقة</th>
-                  <th className="p-2">الإجمالي</th>
-                  <th className="p-2">المنتجات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((o) => (
-                  <tr key={o.id} className="border-t border-border/50">
-                    <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG")}</td>
-                    <td className="p-2 font-bold">{o.customer_name || "—"}</td>
-                    <td className="p-2 font-mono text-xs">{o.phone}</td>
-                    <td className="p-2">{o.mode === "delivery" ? "توصيل" : "استلام"}</td>
-                    <td className="p-2 text-xs">{o.region || o.branch || "—"}</td>
-                    <td className="p-2 font-bold">{Number(o.total || 0).toFixed(2)} ج</td>
-                    <td className="p-2">{Array.isArray(o.items) ? o.items.length : 0}</td>
-                  </tr>
-                ))}
-                {orders.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">لا توجد طلبات</td></tr>}
-              </tbody>
-            </table>
-          </div>
+          <OrdersTable orders={orders} />
         )}
       </Card>
     </div>
