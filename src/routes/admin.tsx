@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { SiteLayout } from "@/components/site/SiteLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -605,9 +605,8 @@ function OrdersTable({ orders }: { orders: any[] }) {
             const isOpen = !!expanded[o.id];
             const items: any[] = Array.isArray(o.items) ? o.items : [];
             return (
-              <>
+              <Fragment key={o.id}>
                 <tr
-                  key={o.id}
                   className="cursor-pointer border-t border-border/50 hover:bg-secondary/20"
                   onClick={() => toggle(o.id)}
                 >
@@ -622,7 +621,7 @@ function OrdersTable({ orders }: { orders: any[] }) {
                   <td className="p-2 text-xs">كاش</td>
                 </tr>
                 {isOpen && (
-                  <tr key={`${o.id}-d`} className="border-t border-border/30 bg-secondary/10">
+                  <tr className="border-t border-border/30 bg-secondary/10">
                     <td colSpan={9} className="p-4">
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-1 text-xs">
@@ -655,7 +654,7 @@ function OrdersTable({ orders }: { orders: any[] }) {
                     </td>
                   </tr>
                 )}
-              </>
+              </Fragment>
             );
           })}
         </tbody>
