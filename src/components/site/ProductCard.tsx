@@ -44,8 +44,9 @@ export function ProductCard({ product }: { product: Product }) {
             className={`h-full w-full object-cover transition-transform duration-500 group-hover:scale-110 ${sold ? "grayscale" : ""}`}
           />
           {bs && (
-            <div className={`absolute top-3 right-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-black shadow-elegant ${bs.cls}`}>
-              {bs.icon}{badgeLabel}
+            <div className={`absolute top-4 right-0 z-10 inline-flex items-center gap-1 rounded-l-md px-3 py-1.5 text-[11px] font-black shadow-elegant ring-1 ring-white/20 ${bs.cls}`}>
+              {bs.icon}<span>{badgeLabel}</span>
+              <span className="absolute -bottom-1 right-0 h-0 w-0 border-t-4 border-r-4 border-t-transparent border-r-black/40" />
             </div>
           )}
           {discount > 0 && !sold && (
