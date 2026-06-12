@@ -579,6 +579,91 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 /* ------------------------------------------------------------------ */
 /* Orders Tab                                                          */
 /* ------------------------------------------------------------------ */
+function OrdersTable({ orders }: { orders: any[] }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  if (orders.length === 0)
+    return <div className="py-10 text-center text-muted-foreground">لا توجد طلبات</div>;
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-right text-sm">
+        <thead className="bg-secondary/30 text-xs text-muted-foreground">
+          <tr>
+            <th className="p-2"></th>
+            <th className="p-2">التاريخ</th>
+            <th className="p-2">العميل</th>
+            <th className="p-2">الهاتف</th>
+            <th className="p-2">النوع</th>
+            <th className="p-2">المنطقة</th>
+            <th className="p-2">الفرع</th>
+            <th className="p-2">المجموع</th>
+            <th className="p-2">الدفع</th>
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map((o) => {
+            const isOpen = !!expanded[o.id];
+            const items: any[] = Array.isArray(o.items) ? o.items : [];
+            return (
+              <>
+                <tr
+                  key={o.id}
+                  className="cursor-pointer border-t border-border/50 hover:bg-secondary/20"
+                  onClick={() => toggle(o.id)}
+                >
+                  <td className="p-2 text-muted-foreground">{isOpen ? "▾" : "▸"}</td>
+                  <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" })}</td>
+                  <td className="p-2 font-bold">{o.customer_name || "—"}</td>
+                  <td className="p-2 font-mono text-xs">{o.phone}</td>
+                  <td className="p-2">{o.mode === "delivery" ? "توصيل" : "استلام"}</td>
+                  <td className="p-2 text-xs">{o.region || "—"}</td>
+                  <td className="p-2 text-xs">{o.branch || "—"}</td>
+                  <td className="p-2 font-bold">{Number(o.total || 0).toFixed(2)} ج.م</td>
+                  <td className="p-2 text-xs">كاش</td>
+                </tr>
+                {isOpen && (
+                  <tr key={`${o.id}-d`} className="border-t border-border/30 bg-secondary/10">
+                    <td colSpan={9} className="p-4">
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1 text-xs">
+                          {o.whatsapp_number && <div><span className="font-bold">واتساب:</span> {o.whatsapp_number}</div>}
+                          {o.street && <div><span className="font-bold">الشارع:</span> {o.street}</div>}
+                          {o.floor_apt && <div><span className="font-bold">الدور/الشقة:</span> {o.floor_apt}</div>}
+                          {o.time_slot && <div><span className="font-bold">موعد التوصيل:</span> {o.time_slot}</div>}
+                          {o.notes && <div><span className="font-bold">ملاحظات:</span> {o.notes}</div>}
+                        </div>
+                        <div>
+                          <div className="mb-2 font-bold">تفاصيل المنتجات:</div>
+                          <div className="space-y-2">
+                            {items.map((it, idx) => (
+                              <div key={idx} className="rounded-lg bg-background/60 p-2">
+                                <div className="flex items-center justify-between">
+                                  <div className="font-bold">{it.name} {it.qty ? `× ${it.qty}` : ""}</div>
+                                  <div className="font-extrabold text-primary">{Number((it.price || 0) * (it.qty || 1)).toFixed(2)} ج.م</div>
+                                </div>
+                                {it.options && (
+                                  <div className="mt-1 text-[11px] text-muted-foreground">
+                                    {Object.entries(it.options).map(([k, v]) => `${k}: ${v}`).join(" • ")}
+                                  </div>
+                                )}
+                                {it.note && <div className="mt-1 text-[11px] text-muted-foreground">📝 {it.note}</div>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function OrdersTab() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
