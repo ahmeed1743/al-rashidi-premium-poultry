@@ -107,12 +107,14 @@ function AdminPage() {
             <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
+            <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
+          <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
         </Tabs>
       </div>
