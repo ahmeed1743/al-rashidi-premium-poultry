@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          id: string
+          max_uses: number
+          updated_at: string
+          used_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          max_uses?: number
+          updated_at?: string
+          used_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          id?: string
+          max_uses?: number
+          updated_at?: string
+          used_count?: number
+        }
+        Relationships: []
+      }
       customer_addresses: {
         Row: {
           created_at: string
@@ -50,8 +86,10 @@ export type Database = {
       orders: {
         Row: {
           branch: string | null
+          coupon_code: string | null
           created_at: string
           customer_name: string | null
+          discount: number
           floor_apt: string | null
           id: string
           items: Json
@@ -68,8 +106,10 @@ export type Database = {
         }
         Insert: {
           branch?: string | null
+          coupon_code?: string | null
           created_at?: string
           customer_name?: string | null
+          discount?: number
           floor_apt?: string | null
           id?: string
           items: Json
@@ -86,8 +126,10 @@ export type Database = {
         }
         Update: {
           branch?: string | null
+          coupon_code?: string | null
           created_at?: string
           customer_name?: string | null
+          discount?: number
           floor_apt?: string | null
           id?: string
           items?: Json
@@ -229,6 +271,24 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      redeem_coupon: {
+        Args: { _code: string }
+        Returns: {
+          discount_type: string
+          discount_value: number
+          message: string
+          ok: boolean
+        }[]
+      }
+      validate_coupon: {
+        Args: { _code: string }
+        Returns: {
+          discount_type: string
+          discount_value: number
+          message: string
+          ok: boolean
+        }[]
       }
     }
     Enums: {
