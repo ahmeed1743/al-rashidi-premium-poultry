@@ -10,6 +10,7 @@ import { motion } from "framer-motion";
 import { MessageCircle, Truck, Store, Banknote, Smartphone } from "lucide-react";
 import { toast } from "sonner";
 import { saveOrder, getAddressByPhone, upsertAddress } from "@/lib/orders-api";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
