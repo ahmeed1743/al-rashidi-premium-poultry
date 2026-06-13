@@ -13,6 +13,8 @@ export interface OrderInput {
   notes?: string;
   whatsapp_number?: string;
   items: CartItem[];
+  coupon_code?: string;
+  discount?: number;
 }
 
 export async function saveOrder(input: OrderInput) {
@@ -25,6 +27,7 @@ export async function saveOrder(input: OrderInput) {
     pair_unit: !!it.pairUnit,
   }));
   const total = input.items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const discount = input.discount || 0;
   const { error } = await supabase.from("orders").insert({
     phone: input.phone,
     customer_name: input.customer_name,
@@ -37,7 +40,9 @@ export async function saveOrder(input: OrderInput) {
     notes: input.notes || null,
     whatsapp_number: input.whatsapp_number || null,
     items,
-    total,
+    total: Math.max(0, total - discount),
+    coupon_code: input.coupon_code || null,
+    discount,
   });
   if (error) console.error("saveOrder", error);
 }
