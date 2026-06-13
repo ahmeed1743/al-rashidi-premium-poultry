@@ -110,16 +110,15 @@ export function Chatbot() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="group fixed bottom-5 left-5 z-40 flex h-14 items-center gap-2 rounded-full bg-gradient-primary px-4 text-primary-foreground shadow-elegant transition-all hover:scale-105 md:bottom-6 md:left-6"
+        className="fixed bottom-5 left-5 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-elegant transition-all hover:scale-110 md:bottom-6 md:left-6"
         aria-label="مساعد الرشيدي"
       >
-        <span className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
+        <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/15">
           <Bot className="h-5 w-5" />
           <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-black text-background">
             <Sparkles className="h-2.5 w-2.5" />
           </span>
         </span>
-        <span className="pr-1 text-sm font-extrabold">مساعد الرشيدي</span>
       </button>
 
       <AnimatePresence>
