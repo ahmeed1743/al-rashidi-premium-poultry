@@ -1029,7 +1029,7 @@ function CouponsTab() {
 
   const load = async () => {
     setLoading(true);
-    const { data } = await supabase.from("coupons").select("*").order("created_at", { ascending: false });
+    const { data } = await (supabase as any).from("coupons").select("*").order("created_at", { ascending: false });
     setRows(data || []);
     setLoading(false);
   };
@@ -1037,7 +1037,7 @@ function CouponsTab() {
 
   const create = async () => {
     if (!form.code.trim()) { toast.error("ادخل كود الكوبون"); return; }
-    const { error } = await supabase.from("coupons").insert({
+    const { error } = await (supabase as any).from("coupons").insert({
       code: form.code.trim().toUpperCase(),
       discount_type: form.discount_type,
       discount_value: Number(form.discount_value) || 0,
@@ -1051,14 +1051,14 @@ function CouponsTab() {
   };
 
   const update = async (id: string, patch: any) => {
-    const { error } = await supabase.from("coupons").update(patch).eq("id", id);
+    const { error } = await (supabase as any).from("coupons").update(patch).eq("id", id);
     if (error) { toast.error(error.message); return; }
     load();
   };
 
   const remove = async (id: string) => {
     if (!confirm("حذف الكوبون؟")) return;
-    const { error } = await supabase.from("coupons").delete().eq("id", id);
+    const { error } = await (supabase as any).from("coupons").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
     toast.success("تم الحذف");
     load();
