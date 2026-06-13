@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, Send, X, Bot, Sparkles } from "lucide-react";
+import { Send, X, Bot, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PRODUCTS } from "@/data/products";
 import { motion, AnimatePresence } from "framer-motion";
