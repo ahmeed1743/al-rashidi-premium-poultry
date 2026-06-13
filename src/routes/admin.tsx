@@ -107,12 +107,14 @@ function AdminPage() {
             <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
+            <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
+          <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
         </Tabs>
       </div>
@@ -1013,6 +1015,136 @@ function ListEditor({ label, hint, value, onChange }: {
         className="min-h-20 text-sm"
       />
       <div className="mt-1 text-[10px] text-muted-foreground">{hint}</div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Coupons Tab                                                         */
+/* ------------------------------------------------------------------ */
+function CouponsTab() {
+  const [rows, setRows] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [form, setForm] = useState({ code: "", discount_type: "percent", discount_value: 10, max_uses: 10, active: true });
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await (supabase as any).from("coupons").select("*").order("created_at", { ascending: false });
+    setRows(data || []);
+    setLoading(false);
+  };
+  useEffect(() => { load(); }, []);
+
+  const create = async () => {
+    if (!form.code.trim()) { toast.error("ادخل كود الكوبون"); return; }
+    const { error } = await (supabase as any).from("coupons").insert({
+      code: form.code.trim().toUpperCase(),
+      discount_type: form.discount_type,
+      discount_value: Number(form.discount_value) || 0,
+      max_uses: Number(form.max_uses) || 1,
+      active: form.active,
+    });
+    if (error) { toast.error(error.message); return; }
+    toast.success("تم إضافة الكوبون");
+    setForm({ code: "", discount_type: "percent", discount_value: 10, max_uses: 10, active: true });
+    load();
+  };
+
+  const update = async (id: string, patch: any) => {
+    const { error } = await (supabase as any).from("coupons").update(patch).eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    load();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("حذف الكوبون؟")) return;
+    const { error } = await (supabase as any).from("coupons").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("تم الحذف");
+    load();
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-xl bg-card p-4 shadow-card">
+        <h3 className="mb-3 text-lg font-extrabold">إضافة كوبون جديد</h3>
+        <div className="grid gap-3 md:grid-cols-5">
+          <div>
+            <label className="mb-1 block text-xs font-bold">الكود</label>
+            <Input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="WELCOME10" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold">نوع الخصم</label>
+            <select
+              value={form.discount_type}
+              onChange={(e) => setForm({ ...form, discount_type: e.target.value })}
+              className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            >
+              <option value="percent">نسبة %</option>
+              <option value="fixed">قيمة ثابتة</option>
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold">قيمة الخصم</label>
+            <Input type="number" value={form.discount_value} onChange={(e) => setForm({ ...form, discount_value: Number(e.target.value) })} />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold">عدد الاستخدامات</label>
+            <Input type="number" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: Number(e.target.value) })} />
+          </div>
+          <div className="flex items-end">
+            <Button onClick={create} className="w-full bg-gradient-primary text-primary-foreground">
+              <Plus className="ml-1 h-4 w-4" /> إضافة
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl bg-card p-4 shadow-card">
+        <h3 className="mb-3 text-lg font-extrabold">الكوبونات الحالية</h3>
+        {loading ? (
+          <p className="text-sm text-muted-foreground">جاري التحميل...</p>
+        ) : rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">لا توجد كوبونات بعد.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="border-b border-border text-xs text-muted-foreground">
+                <tr>
+                  <th className="px-2 py-2">الكود</th>
+                  <th className="px-2 py-2">النوع</th>
+                  <th className="px-2 py-2">القيمة</th>
+                  <th className="px-2 py-2">الاستخدام</th>
+                  <th className="px-2 py-2">مفعل</th>
+                  <th className="px-2 py-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((c) => (
+                  <tr key={c.id} className="border-b border-border/50">
+                    <td className="px-2 py-2 font-bold">{c.code}</td>
+                    <td className="px-2 py-2">{c.discount_type === "percent" ? "نسبة %" : "قيمة ثابتة"}</td>
+                    <td className="px-2 py-2">{c.discount_value}</td>
+                    <td className="px-2 py-2">
+                      <span className={c.used_count >= c.max_uses ? "text-destructive" : ""}>
+                        {c.used_count} / {c.max_uses}
+                      </span>
+                    </td>
+                    <td className="px-2 py-2">
+                      <Switch checked={c.active} onCheckedChange={(v) => update(c.id, { active: v })} />
+                    </td>
+                    <td className="px-2 py-2">
+                      <Button size="sm" variant="ghost" onClick={() => remove(c.id)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
