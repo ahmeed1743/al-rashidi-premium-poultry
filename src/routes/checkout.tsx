@@ -122,7 +122,7 @@ function CheckoutPage() {
     const code = couponCode.trim();
     if (!code) return;
     setCouponBusy(true);
-    const { data, error } = await supabase.rpc("validate_coupon", { _code: code });
+    const { data, error } = await (supabase as any).rpc("validate_coupon", { _code: code });
     setCouponBusy(false);
     const row = Array.isArray(data) ? data[0] : data;
     if (error || !row?.ok) {
@@ -141,7 +141,7 @@ function CheckoutPage() {
 
     // Redeem coupon (atomic) before sending
     if (coupon) {
-      const { data: r } = await supabase.rpc("redeem_coupon", { _code: coupon.code });
+      const { data: r } = await (supabase as any).rpc("redeem_coupon", { _code: coupon.code });
       const row = Array.isArray(r) ? r[0] : r;
       if (!row?.ok) { toast.error(row?.message || "الكوبون لم يعد متاحاً"); setCoupon(null); return; }
     }
