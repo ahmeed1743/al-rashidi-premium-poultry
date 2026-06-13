@@ -27,12 +27,9 @@ const WHATSAPP_NUMBERS = [
   { id: "201226151455", label: "01226151455" },
 ];
 
-const TIME_SLOTS = [
-  "خلال ساعتين إلى 3 ساعات",
-  "11:00 ص", "12:00 م", "1:00 م", "2:00 م", "3:00 م", "4:00 م", "5:00 م", "6:00 م", "7:00 م", "8:00 م",
-];
-
-const BRANCHES = ["الفرع الرئيسي", "فرع 2", "فرع 3"];
+const ASAP_SLOT = "خلال ساعتين إلى 3 ساعات";
+const SCHEDULED_SLOTS = ["11:00 ص", "12:00 م", "1:00 م", "2:00 م", "3:00 م", "4:00 م"];
+const PICKUP_BRANCH = "الفرع الرئيسي - كامب شيزار";
 
 type Method = "delivery" | "pickup";
 type Pay = "cash" | "instapay";
@@ -43,10 +40,16 @@ function CheckoutPage() {
   const [method, setMethod] = useState<Method>("delivery");
   const [pay, setPay] = useState<Pay>("cash");
   const [whatsapp, setWhatsapp] = useState(WHATSAPP_NUMBERS[0].id);
-  const [timeSlot, setTimeSlot] = useState(TIME_SLOTS[0]);
-  const [branch, setBranch] = useState(BRANCHES[0]);
+  const [timeMode, setTimeMode] = useState<"asap" | "scheduled">("asap");
+  const [scheduledTime, setScheduledTime] = useState(SCHEDULED_SLOTS[0]);
   const [form, setForm] = useState({ name: "", phone: "", area: "", street: "", floorApt: "", notes: "" });
   const [savedFound, setSavedFound] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [coupon, setCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
+  const [couponBusy, setCouponBusy] = useState(false);
+
+  const timeSlot = timeMode === "asap" ? ASAP_SLOT : scheduledTime;
+  const branch = PICKUP_BRANCH;
 
   const upd = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
 
@@ -87,6 +90,12 @@ function CheckoutPage() {
       if (form.floorApt) lines.push(`  • الدور والشقة: ${form.floorApt}`);
     }
     lines.push(`💰 الدفع: ${pay === "cash" ? "كاش" : "Instapay"}`);
+    const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
+    const disc = computeDiscount(sub);
+    if (coupon) {
+      lines.push(`🎟️ كوبون: ${coupon.code} (-${disc} ج.م)`);
+      lines.push(`💵 الإجمالي: ${(sub - disc).toFixed(2)} ج.م`);
+    }
     lines.push("");
     lines.push("🛒 *المنتجات*");
     items.forEach((it, i) => {
@@ -102,10 +111,39 @@ function CheckoutPage() {
     return encodeURIComponent(lines.join("\n"));
   };
 
+  const computeDiscount = (subtotal: number) => {
+    if (!coupon) return 0;
+    const d = coupon.type === "percent" ? (subtotal * coupon.value) / 100 : coupon.value;
+    return Math.min(Math.max(0, d), subtotal);
+  };
+
+  const applyCoupon = async () => {
+    const code = couponCode.trim();
+    if (!code) return;
+    setCouponBusy(true);
+    const { data, error } = await supabase.rpc("validate_coupon", { _code: code });
+    setCouponBusy(false);
+    const row = Array.isArray(data) ? data[0] : data;
+    if (error || !row?.ok) {
+      toast.error(row?.message || "كوبون غير صحيح");
+      setCoupon(null);
+      return;
+    }
+    setCoupon({ code, type: row.discount_type, value: Number(row.discount_value) });
+    toast.success("تم تطبيق الكوبون");
+  };
+
   const submit = async () => {
     if (!form.name || !form.phone) { toast.error("ادخل الاسم ورقم الهاتف"); return; }
     if (method === "delivery" && (!form.area || !form.street)) { toast.error("أكمل بيانات العنوان"); return; }
     if (items.length === 0) { toast.error("السلة فاضية"); return; }
+
+    // Redeem coupon (atomic) before sending
+    if (coupon) {
+      const { data: r } = await supabase.rpc("redeem_coupon", { _code: coupon.code });
+      const row = Array.isArray(r) ? r[0] : r;
+      if (!row?.ok) { toast.error(row?.message || "الكوبون لم يعد متاحاً"); setCoupon(null); return; }
+    }
 
     // Save in background
     Promise.all([
@@ -121,6 +159,8 @@ function CheckoutPage() {
         notes: form.notes,
         whatsapp_number: whatsapp,
         items,
+        coupon_code: coupon?.code,
+        discount: computeDiscount(items.reduce((s, it) => s + it.price * it.quantity, 0)),
       }),
       method === "delivery"
         ? upsertAddress({
@@ -186,23 +226,34 @@ function CheckoutPage() {
 
           {method === "pickup" && (
             <Section title="الفرع">
-              <div className="flex flex-wrap gap-2">
-                {BRANCHES.map((b) => (
-                  <button key={b} onClick={() => setBranch(b)} className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${branch === b ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"}`}>
-                    {b}
-                  </button>
-                ))}
+              <div className="rounded-xl bg-gradient-primary px-4 py-3 text-sm font-bold text-primary-foreground shadow-elegant">
+                {PICKUP_BRANCH}
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">الاستلام متاح من الفرع الرئيسي فقط.</p>
             </Section>
           )}
 
           <Section title="وقت الاستلام / التوصيل">
-            <div className="flex flex-wrap gap-2">
-              {TIME_SLOTS.map((t) => (
-                <button key={t} onClick={() => setTimeSlot(t)} className={`rounded-full px-4 py-2 text-sm font-bold transition-all ${timeSlot === t ? "bg-gradient-primary text-primary-foreground shadow-elegant" : "bg-secondary/40"}`}>
-                  {t}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setTimeMode("asap")} className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${timeMode === "asap" ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant" : "border-border bg-secondary/40"}`}>
+                  في أقرب وقت
+                  <div className="mt-0.5 text-[11px] opacity-90">خلال ساعتين إلى 3 ساعات</div>
                 </button>
-              ))}
+                <button onClick={() => setTimeMode("scheduled")} className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${timeMode === "scheduled" ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant" : "border-border bg-secondary/40"}`}>
+                  استلام في ميعاد
+                  <div className="mt-0.5 text-[11px] opacity-90">من 11 صباحاً إلى 4 مساءً</div>
+                </button>
+              </div>
+              {timeMode === "scheduled" && (
+                <select
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="h-11 w-full rounded-xl border border-input bg-background px-3 text-sm font-bold"
+                >
+                  {SCHEDULED_SLOTS.map((t) => <option key={t} value={t}>{t}</option>)}
+                </select>
+              )}
             </div>
           </Section>
 
@@ -225,6 +276,26 @@ function CheckoutPage() {
 
           <Section title="ملاحظات عامة">
             <Textarea value={form.notes} onChange={(e) => upd("notes", e.target.value)} placeholder="أي ملاحظات إضافية..." />
+          </Section>
+
+          <Section title="كوبون خصم">
+            <div className="flex gap-2">
+              <Input
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value)}
+                placeholder="ادخل كود الكوبون"
+                className="bg-background"
+              />
+              <Button onClick={applyCoupon} disabled={couponBusy || !couponCode.trim()} className="bg-gradient-primary text-primary-foreground">
+                تطبيق
+              </Button>
+            </div>
+            {coupon && (
+              <div className="mt-3 flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2 text-xs">
+                <span className="font-bold text-primary">✓ كوبون {coupon.code} مفعل</span>
+                <button onClick={() => { setCoupon(null); setCouponCode(""); }} className="text-muted-foreground hover:text-destructive">إزالة</button>
+              </div>
+            )}
           </Section>
         </motion.div>
 
@@ -249,6 +320,17 @@ function CheckoutPage() {
                 </div>
               ))}
             </div>
+            {(() => {
+              const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
+              const disc = computeDiscount(sub);
+              return (
+                <div className="space-y-1 border-t border-border pt-3 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">الإجمالي قبل الخصم</span><span className="font-bold">{sub.toFixed(2)} ج.م</span></div>
+                  {disc > 0 && <div className="flex justify-between text-primary"><span>خصم ({coupon?.code})</span><span className="font-bold">-{disc.toFixed(2)} ج.م</span></div>}
+                  <div className="flex justify-between text-base"><span className="font-extrabold">الإجمالي</span><span className="font-extrabold">{(sub - disc).toFixed(2)} ج.م</span></div>
+                </div>
+              );
+            })()}
             <Button onClick={submit} className="h-12 w-full rounded-xl bg-[#25D366] text-base font-extrabold text-white shadow-elegant hover:bg-[#1fb957]">
               <MessageCircle className="ml-2 h-5 w-5" />
               تأكيد عبر واتساب
