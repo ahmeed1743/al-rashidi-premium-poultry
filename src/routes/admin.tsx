@@ -584,13 +584,39 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function OrdersTable({ orders }: { orders: any[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const allSelected = orders.length > 0 && orders.every((o) => selected[o.id]);
+  const toggleAll = () => {
+    if (allSelected) setSelected({});
+    else setSelected(Object.fromEntries(orders.map((o) => [o.id, true])));
+  };
+  const selectedIds = Object.keys(selected).filter((k) => selected[k]);
+  const deleteOne = async (id: string) => {
+    if (!confirm("حذف هذا الطلب نهائياً؟")) return;
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("تم الحذف"); location.reload(); }
+  };
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`حذف ${selectedIds.length} طلب نهائياً؟`)) return;
+    const { error } = await supabase.from("orders").delete().in("id", selectedIds);
+    if (error) toast.error(error.message); else { toast.success("تم الحذف"); location.reload(); }
+  };
   if (orders.length === 0)
     return <div className="py-10 text-center text-muted-foreground">لا توجد طلبات</div>;
   return (
-    <div className="overflow-x-auto">
+    <div className="space-y-2">
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg bg-destructive/10 px-3 py-2 text-sm">
+          <span>محدد: {selectedIds.length}</span>
+          <Button size="sm" variant="destructive" onClick={deleteSelected}><Trash2 className="ml-1 h-3 w-3" /> حذف المحدد</Button>
+        </div>
+      )}
+      <div className="overflow-x-auto">
       <table className="w-full text-right text-sm">
         <thead className="bg-secondary/30 text-xs text-muted-foreground">
           <tr>
+            <th className="p-2"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
             <th className="p-2"></th>
             <th className="p-2">التاريخ</th>
             <th className="p-2">العميل</th>
@@ -600,6 +626,7 @@ function OrdersTable({ orders }: { orders: any[] }) {
             <th className="p-2">الفرع</th>
             <th className="p-2">المجموع</th>
             <th className="p-2">الدفع</th>
+            <th className="p-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -612,6 +639,9 @@ function OrdersTable({ orders }: { orders: any[] }) {
                   className="cursor-pointer border-t border-border/50 hover:bg-secondary/20"
                   onClick={() => toggle(o.id)}
                 >
+                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={!!selected[o.id]} onChange={(e) => setSelected((p) => ({ ...p, [o.id]: e.target.checked }))} />
+                  </td>
                   <td className="p-2 text-muted-foreground">{isOpen ? "▾" : "▸"}</td>
                   <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" })}</td>
                   <td className="p-2 font-bold">{o.customer_name || "—"}</td>
@@ -621,10 +651,15 @@ function OrdersTable({ orders }: { orders: any[] }) {
                   <td className="p-2 text-xs">{o.branch || "—"}</td>
                   <td className="p-2 font-bold">{Number(o.total || 0).toFixed(2)} ج.م</td>
                   <td className="p-2 text-xs">كاش</td>
+                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => deleteOne(o.id)} className="text-destructive hover:opacity-70" aria-label="حذف">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
                 </tr>
                 {isOpen && (
                   <tr className="border-t border-border/30 bg-secondary/10">
-                    <td colSpan={9} className="p-4">
+                    <td colSpan={11} className="p-4">
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-1 text-xs">
                           {o.whatsapp_number && <div><span className="font-bold">واتساب:</span> {o.whatsapp_number}</div>}
@@ -661,6 +696,7 @@ function OrdersTable({ orders }: { orders: any[] }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
