@@ -292,10 +292,10 @@ type ProductRow = {
   customization_config: any | null;
 };
 
-function emptyProduct(): ProductRow {
+function emptyProduct(offer = false): ProductRow {
   return {
     id: "", name: "", description: "", price: 0, old_price: null, image_url: "",
-    category: "chicken", subcategory: null, badge: null, customization: "none",
+    category: "chicken", subcategory: null, badge: offer ? "🔥 عرض" : null, customization: "none",
     pair_unit: false, note: null, sort_order: 0, is_active: true, sold_out: false, discount_percent: null,
     customization_config: null,
   };
@@ -320,7 +320,7 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
 
   const filtered = useMemo(() => rows.filter((r) =>
     (cat === "all" || r.category === cat) &&
-    (!onlyOffers || r.old_price != null || r.badge) &&
+    (!onlyOffers || r.old_price != null || !!r.badge || r.discount_percent != null) &&
     (!filter || r.name.includes(filter) || r.id.includes(filter))
   ), [rows, filter, cat, onlyOffers]);
 
@@ -360,8 +360,8 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
         </select>
         <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" />تحديث</Button>
         <div className="flex-1" />
-        <Button onClick={() => setEditing(emptyProduct())} className="bg-gradient-primary text-primary-foreground">
-          <Plus className="ml-1 h-4 w-4" /> منتج جديد
+        <Button onClick={() => setEditing(emptyProduct(onlyOffers))} className="bg-gradient-primary text-primary-foreground">
+          <Plus className="ml-1 h-4 w-4" /> {onlyOffers ? "عرض جديد" : "منتج جديد"}
         </Button>
       </div>
 
