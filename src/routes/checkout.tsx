@@ -7,10 +7,15 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { MessageCircle, Truck, Store, Banknote, Smartphone } from "lucide-react";
+import { MessageCircle, Truck, Store, Banknote, Smartphone, Pencil, Info } from "lucide-react";
 import { toast } from "sonner";
 import { saveOrder, getAddressByPhone, upsertAddress } from "@/lib/orders-api";
 import { supabase } from "@/integrations/supabase/client";
+import { ProductDialog } from "@/components/site/ProductDialog";
+import { useQuery } from "@tanstack/react-query";
+import { fetchProducts } from "@/lib/products-api";
+import { PRODUCTS } from "@/data/products";
+import type { CartItem } from "@/store/cart";
 
 export const Route = createFileRoute("/checkout")({
   head: () => ({
@@ -38,6 +43,11 @@ type Pay = "cash" | "instapay";
 function CheckoutPage() {
   const navigate = useNavigate();
   const { items, clear } = useCart();
+  const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
+  const [editing, setEditing] = useState<CartItem | null>(null);
+  const editingProduct = editing
+    ? products.find((p) => p.id === editing.productId) || PRODUCTS.find((p) => p.id === editing.productId)
+    : null;
   const [method, setMethod] = useState<Method>("delivery");
   const [pay, setPay] = useState<Pay>("cash");
   const [whatsapp, setWhatsapp] = useState(WHATSAPP_NUMBERS[0].id);
@@ -204,9 +214,13 @@ function CheckoutPage() {
           </Section>
 
           <Section title="بيانات العميل">
+            <div className="mb-3 flex items-start gap-2 rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary">
+              <Info className="mt-0.5 h-3.5 w-3.5 flex-none" />
+              <span>ابدأ برقم الهاتف — لو سبق طلبت قبل كده هنرجع بياناتك تلقائياً.</span>
+            </div>
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="الاسم" v={form.name} onChange={(v) => upd("name", v)} />
               <Field label="رقم الهاتف" v={form.phone} onChange={(v) => upd("phone", v)} />
+              <Field label="الاسم" v={form.name} onChange={(v) => upd("name", v)} />
             </div>
             {savedFound && (
               <div className="mt-3 rounded-lg bg-primary/10 px-3 py-2 text-xs text-primary">
@@ -308,7 +322,16 @@ function CheckoutPage() {
                 <div key={it.uid} className="border-b border-border/50 pb-2 last:border-0">
                   <div className="flex justify-between gap-2">
                     <span className="font-bold">{it.name}</span>
-                    <span className="text-muted-foreground">×{it.quantity}{it.pairUnit ? " جوز" : ""}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">×{it.quantity}{it.pairUnit ? " جوز" : ""}</span>
+                      <button
+                        onClick={() => setEditing(it)}
+                        className="text-muted-foreground transition-colors hover:text-primary"
+                        aria-label="تعديل"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                   {it.options && (
                     <div className="mt-1 flex flex-wrap gap-1 text-[11px] text-muted-foreground">
@@ -321,16 +344,14 @@ function CheckoutPage() {
                 </div>
               ))}
             </div>
-            {(() => {
+            {coupon && (() => {
               const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
               const disc = computeDiscount(sub);
-              return (
-                <div className="space-y-1 border-t border-border pt-3 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">الإجمالي قبل الخصم</span><span className="font-bold">{sub.toFixed(2)} ج.م</span></div>
-                  {disc > 0 && <div className="flex justify-between text-primary"><span>خصم ({coupon?.code})</span><span className="font-bold">-{disc.toFixed(2)} ج.م</span></div>}
-                  <div className="flex justify-between text-base"><span className="font-extrabold">الإجمالي</span><span className="font-extrabold">{(sub - disc).toFixed(2)} ج.م</span></div>
+              return disc > 0 ? (
+                <div className="border-t border-border pt-3 text-xs text-primary">
+                  ✓ كوبون {coupon.code} مفعل (خصم {disc.toFixed(2)} ج.م)
                 </div>
-              );
+              ) : null;
             })()}
             <Button onClick={submit} className="h-12 w-full rounded-xl bg-[#25D366] text-base font-extrabold text-white shadow-elegant hover:bg-[#1fb957]">
               <MessageCircle className="ml-2 h-5 w-5" />
@@ -340,6 +361,14 @@ function CheckoutPage() {
           </div>
         </div>
       </div>
+      {editingProduct && editing && (
+        <ProductDialog
+          product={editingProduct}
+          open={!!editing}
+          onOpenChange={(v) => !v && setEditing(null)}
+          editing={editing}
+        />
+      )}
     </SiteLayout>
   );
 }

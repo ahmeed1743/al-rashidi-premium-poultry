@@ -59,16 +59,18 @@ export function ProductCard({ product }: { product: Product }) {
           <h3 className="text-base font-extrabold leading-tight md:text-lg">{product.name}</h3>
           <p className="line-clamp-2 text-xs text-muted-foreground md:text-sm">{product.description}</p>
           <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-            <div className="flex items-baseline gap-1.5">
+            <div className="flex flex-wrap items-baseline gap-1.5">
               {product.price > 0 ? (
                 <>
+                  {product.oldPrice && (
+                    <span className="rounded-md bg-destructive/15 px-1.5 py-0.5 text-[11px] font-extrabold text-destructive line-through decoration-2">
+                      {product.oldPrice} ج
+                    </span>
+                  )}
                   <span className="text-lg font-black text-primary">{product.price}</span>
                   <span className="text-[11px] font-bold text-muted-foreground">
                     ج{product.pairUnit ? " /جوز" : ""}
                   </span>
-                  {product.oldPrice && (
-                    <span className="text-[11px] text-muted-foreground line-through">{product.oldPrice}</span>
-                  )}
                 </>
               ) : (
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gold">

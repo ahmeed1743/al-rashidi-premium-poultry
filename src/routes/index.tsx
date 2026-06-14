@@ -51,8 +51,8 @@ function Home() {
               <Link to="/products" className="inline-flex h-12 items-center gap-2 rounded-full bg-gradient-primary px-7 text-sm font-extrabold text-primary-foreground shadow-elegant transition-transform hover:scale-105">
                 اطلب الآن <ArrowLeft className="h-4 w-4" />
               </Link>
-              <Link to="/marinades" className="inline-flex h-12 items-center gap-2 rounded-full border border-border bg-secondary/40 px-7 text-sm font-extrabold transition-colors hover:bg-secondary">
-                المتبلات
+              <Link to="/offers" className="inline-flex h-12 items-center gap-2 rounded-full border border-gold/60 bg-gold/10 px-7 text-sm font-extrabold text-gold transition-colors hover:bg-gold/20">
+                🔥 العروض
               </Link>
             </div>
           </motion.div>

@@ -584,13 +584,39 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function OrdersTable({ orders }: { orders: any[] }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const toggle = (id: string) => setExpanded((p) => ({ ...p, [id]: !p[id] }));
+  const [selected, setSelected] = useState<Record<string, boolean>>({});
+  const allSelected = orders.length > 0 && orders.every((o) => selected[o.id]);
+  const toggleAll = () => {
+    if (allSelected) setSelected({});
+    else setSelected(Object.fromEntries(orders.map((o) => [o.id, true])));
+  };
+  const selectedIds = Object.keys(selected).filter((k) => selected[k]);
+  const deleteOne = async (id: string) => {
+    if (!confirm("حذف هذا الطلب نهائياً؟")) return;
+    const { error } = await supabase.from("orders").delete().eq("id", id);
+    if (error) toast.error(error.message); else { toast.success("تم الحذف"); location.reload(); }
+  };
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`حذف ${selectedIds.length} طلب نهائياً؟`)) return;
+    const { error } = await supabase.from("orders").delete().in("id", selectedIds);
+    if (error) toast.error(error.message); else { toast.success("تم الحذف"); location.reload(); }
+  };
   if (orders.length === 0)
     return <div className="py-10 text-center text-muted-foreground">لا توجد طلبات</div>;
   return (
-    <div className="overflow-x-auto">
+    <div className="space-y-2">
+      {selectedIds.length > 0 && (
+        <div className="flex items-center justify-between rounded-lg bg-destructive/10 px-3 py-2 text-sm">
+          <span>محدد: {selectedIds.length}</span>
+          <Button size="sm" variant="destructive" onClick={deleteSelected}><Trash2 className="ml-1 h-3 w-3" /> حذف المحدد</Button>
+        </div>
+      )}
+      <div className="overflow-x-auto">
       <table className="w-full text-right text-sm">
         <thead className="bg-secondary/30 text-xs text-muted-foreground">
           <tr>
+            <th className="p-2"><input type="checkbox" checked={allSelected} onChange={toggleAll} /></th>
             <th className="p-2"></th>
             <th className="p-2">التاريخ</th>
             <th className="p-2">العميل</th>
@@ -600,6 +626,7 @@ function OrdersTable({ orders }: { orders: any[] }) {
             <th className="p-2">الفرع</th>
             <th className="p-2">المجموع</th>
             <th className="p-2">الدفع</th>
+            <th className="p-2"></th>
           </tr>
         </thead>
         <tbody>
@@ -612,6 +639,9 @@ function OrdersTable({ orders }: { orders: any[] }) {
                   className="cursor-pointer border-t border-border/50 hover:bg-secondary/20"
                   onClick={() => toggle(o.id)}
                 >
+                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={!!selected[o.id]} onChange={(e) => setSelected((p) => ({ ...p, [o.id]: e.target.checked }))} />
+                  </td>
                   <td className="p-2 text-muted-foreground">{isOpen ? "▾" : "▸"}</td>
                   <td className="p-2 text-xs text-muted-foreground">{new Date(o.created_at).toLocaleString("ar-EG", { dateStyle: "medium", timeStyle: "short" })}</td>
                   <td className="p-2 font-bold">{o.customer_name || "—"}</td>
@@ -621,10 +651,15 @@ function OrdersTable({ orders }: { orders: any[] }) {
                   <td className="p-2 text-xs">{o.branch || "—"}</td>
                   <td className="p-2 font-bold">{Number(o.total || 0).toFixed(2)} ج.م</td>
                   <td className="p-2 text-xs">كاش</td>
+                  <td className="p-2" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => deleteOne(o.id)} className="text-destructive hover:opacity-70" aria-label="حذف">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </td>
                 </tr>
                 {isOpen && (
                   <tr className="border-t border-border/30 bg-secondary/10">
-                    <td colSpan={9} className="p-4">
+                    <td colSpan={11} className="p-4">
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="space-y-1 text-xs">
                           {o.whatsapp_number && <div><span className="font-bold">واتساب:</span> {o.whatsapp_number}</div>}
@@ -661,6 +696,7 @@ function OrdersTable({ orders }: { orders: any[] }) {
           })}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -670,6 +706,7 @@ function OrdersTab() {
   const [loading, setLoading] = useState(true);
   const customersRef = useRef<HTMLDivElement>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -678,6 +715,35 @@ function OrdersTab() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify(orders, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `orders-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    toast.success(`تم تنزيل ${orders.length} طلب`);
+  };
+  const importJSON = async (file: File) => {
+    try {
+      const txt = await file.text();
+      const arr = JSON.parse(txt);
+      if (!Array.isArray(arr)) return toast.error("ملف غير صالح");
+      if (!confirm(`استيراد ${arr.length} طلب من الملف؟`)) return;
+      const rows = arr.map((o: any) => {
+        const { id: _id, created_at: _c, updated_at: _u, ...rest } = o;
+        return rest;
+      });
+      const { error } = await supabase.from("orders").insert(rows);
+      if (error) toast.error(error.message); else { toast.success("تم الاستيراد"); load(); }
+    } catch (e: any) { toast.error(e.message || "فشل الاستيراد"); }
+  };
+  const deleteAll = async () => {
+    if (!confirm(`حذف جميع الطلبات (${orders.length})؟ تأكد من تنزيل نسخة احتياطية أولاً.`)) return;
+    if (!confirm("هل أنت متأكد تماماً؟ لن يمكن الاسترجاع.")) return;
+    const { error } = await supabase.from("orders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) toast.error(error.message); else { toast.success("تم الحذف"); load(); }
+  };
 
   const regionStats = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
@@ -729,10 +795,14 @@ function OrdersTab() {
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black">آخر 200 طلب</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={exportJSON}><Download className="ml-1 h-4 w-4" /> نسخة احتياطية (JSON)</Button>
+          <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="ml-1 h-4 w-4" /> استيراد</Button>
           <Button variant="outline" size="sm" onClick={exportRegionsCSV}><Download className="ml-1 h-4 w-4" /> تقرير المناطق (CSV)</Button>
           <Button variant="outline" size="sm" disabled={exportingPdf} onClick={exportCustomersPdf}><Download className="ml-1 h-4 w-4" /> تقرير العملاء (PDF)</Button>
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" /> تحديث</Button>
+          <Button variant="destructive" size="sm" onClick={deleteAll}><Trash2 className="ml-1 h-4 w-4" /> حذف الكل</Button>
         </div>
       </div>
 

@@ -6,11 +6,16 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { ProductDialog } from "./ProductDialog";
 import { PRODUCTS } from "@/data/products";
+import { useQuery } from "@tanstack/react-query";
+import { fetchProducts } from "@/lib/products-api";
 
 export function CartDrawer() {
   const { items, isOpen, setOpen, updateQty, removeItem } = useCart();
   const [editing, setEditing] = useState<CartItem | null>(null);
-  const editingProduct = editing ? PRODUCTS.find((p) => p.id === editing.productId) : null;
+  const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
+  const editingProduct = editing
+    ? products.find((p) => p.id === editing.productId) || PRODUCTS.find((p) => p.id === editing.productId)
+    : null;
 
   return (
     <>
