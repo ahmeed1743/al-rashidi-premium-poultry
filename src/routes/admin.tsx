@@ -706,6 +706,7 @@ function OrdersTab() {
   const [loading, setLoading] = useState(true);
   const customersRef = useRef<HTMLDivElement>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const load = async () => {
     setLoading(true);
     const { data } = await supabase
@@ -714,6 +715,35 @@ function OrdersTab() {
     setLoading(false);
   };
   useEffect(() => { load(); }, []);
+
+  const exportJSON = () => {
+    const blob = new Blob([JSON.stringify(orders, null, 2)], { type: "application/json" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = `orders-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    toast.success(`تم تنزيل ${orders.length} طلب`);
+  };
+  const importJSON = async (file: File) => {
+    try {
+      const txt = await file.text();
+      const arr = JSON.parse(txt);
+      if (!Array.isArray(arr)) return toast.error("ملف غير صالح");
+      if (!confirm(`استيراد ${arr.length} طلب من الملف؟`)) return;
+      const rows = arr.map((o: any) => {
+        const { id: _id, created_at: _c, updated_at: _u, ...rest } = o;
+        return rest;
+      });
+      const { error } = await supabase.from("orders").insert(rows);
+      if (error) toast.error(error.message); else { toast.success("تم الاستيراد"); load(); }
+    } catch (e: any) { toast.error(e.message || "فشل الاستيراد"); }
+  };
+  const deleteAll = async () => {
+    if (!confirm(`حذف جميع الطلبات (${orders.length})؟ تأكد من تنزيل نسخة احتياطية أولاً.`)) return;
+    if (!confirm("هل أنت متأكد تماماً؟ لن يمكن الاسترجاع.")) return;
+    const { error } = await supabase.from("orders").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) toast.error(error.message); else { toast.success("تم الحذف"); load(); }
+  };
 
   const regionStats = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
@@ -765,10 +795,14 @@ function OrdersTab() {
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black">آخر 200 طلب</h2>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={exportJSON}><Download className="ml-1 h-4 w-4" /> نسخة احتياطية (JSON)</Button>
+          <input ref={fileRef} type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJSON(e.target.files[0])} />
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}><Upload className="ml-1 h-4 w-4" /> استيراد</Button>
           <Button variant="outline" size="sm" onClick={exportRegionsCSV}><Download className="ml-1 h-4 w-4" /> تقرير المناطق (CSV)</Button>
           <Button variant="outline" size="sm" disabled={exportingPdf} onClick={exportCustomersPdf}><Download className="ml-1 h-4 w-4" /> تقرير العملاء (PDF)</Button>
           <Button variant="outline" size="sm" onClick={load}><RefreshCw className="ml-1 h-4 w-4" /> تحديث</Button>
+          <Button variant="destructive" size="sm" onClick={deleteAll}><Trash2 className="ml-1 h-4 w-4" /> حذف الكل</Button>
         </div>
       </div>
 
