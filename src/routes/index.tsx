@@ -24,7 +24,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
 
-  const offers = products.filter((p) => p.oldPrice || p.badge);
+  const offers = products.filter((p) => !p.soldOut && (p.oldPrice || p.badge));
   const chicken = products.filter((p) => p.section === "chicken").slice(0, 8);
   const marinades = products.filter((p) => p.section === "marinated").slice(0, 10);
   const parts = products.filter((p) => p.section === "parts").slice(0, 10);
