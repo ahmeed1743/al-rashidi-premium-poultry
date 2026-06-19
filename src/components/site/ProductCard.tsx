@@ -8,14 +8,18 @@ function badgeStyle(label?: string) {
   if (!label) return null;
   if (label.includes("نفذ"))
     return { cls: "bg-destructive text-destructive-foreground", icon: <Flame className="h-3 w-3" /> };
+  if (label.includes("عرض"))
+    return { cls: "bg-orange-600 text-white", icon: <Flame className="h-3 w-3" /> };
   if (label.includes("الأكثر") || label.includes("مبيع"))
-    return { cls: "bg-orange-500 text-white", icon: <Flame className="h-3 w-3" /> };
+    return { cls: "bg-rose-600 text-white", icon: <Flame className="h-3 w-3" /> };
   if (label.includes("خصم"))
     return { cls: "bg-emerald-600 text-white", icon: <BadgePercent className="h-3 w-3" /> };
   if (label.includes("جديد"))
     return { cls: "bg-blue-600 text-white", icon: <Sparkles className="h-3 w-3" /> };
-  if (label.includes("مميز") || label.includes("موصى"))
-    return { cls: "bg-gradient-gold text-background", icon: <Star className="h-3 w-3" /> };
+  if (label.includes("مميز"))
+    return { cls: "bg-violet-600 text-white", icon: <Star className="h-3 w-3" /> };
+  if (label.includes("موصى"))
+    return { cls: "bg-teal-600 text-white", icon: <Star className="h-3 w-3" /> };
   return { cls: "bg-gradient-gold text-background", icon: <Sparkles className="h-3 w-3" /> };
 }
 

@@ -15,10 +15,10 @@ const BRANCHES = [
     wa: "201226151455",
   },
   {
-    name: "جناكليس",
-    fb: "https://www.facebook.com/elrshedi",
-    phones: ["01099342344"],
-    wa: "201099342344",
+    name: "بحري",
+    fb: "https://www.facebook.com/share/1HGk4U5C8T/",
+    phones: ["01282398999"],
+    wa: "201130834992",
   },
 ];
 
