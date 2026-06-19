@@ -320,7 +320,7 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
 
   const filtered = useMemo(() => rows.filter((r) =>
     (cat === "all" || r.category === cat) &&
-    (!onlyOffers || r.old_price != null || !!r.badge || r.discount_percent != null) &&
+    (!onlyOffers || ((r.old_price != null || !!r.badge || r.discount_percent != null) && !r.sold_out)) &&
     (!filter || r.name.includes(filter) || r.id.includes(filter))
   ), [rows, filter, cat, onlyOffers]);
 

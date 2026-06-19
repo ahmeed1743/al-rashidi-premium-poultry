@@ -31,11 +31,11 @@ const BRANCHES = [
     hours: "8ص — 8م",
   },
   {
-    name: "فرع جناكليس",
-    address: "جناكليس، الإسكندرية",
-    phones: ["01099342344"],
-    wa: "201099342344",
-    fb: "https://www.facebook.com/elrshedi",
+    name: "فرع بحري",
+    address: "بحري، الإسكندرية",
+    phones: ["01282398999", "01130834992"],
+    wa: "201130834992",
+    fb: "https://www.facebook.com/share/1HGk4U5C8T/",
     hours: "8ص — 8م",
   },
 ];
