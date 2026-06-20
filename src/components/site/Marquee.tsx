@@ -19,7 +19,6 @@ export function Marquee({ items }: { items: string[] }) {
 
 export function OffersMarquee({ products }: { products: Product[] }) {
   if (products.length === 0) return null;
-  const list = [...products, ...products];
   return (
     <section className="relative overflow-hidden py-10">
       <div className="container mx-auto mb-4 flex items-end justify-between px-4">
@@ -31,18 +30,18 @@ export function OffersMarquee({ products }: { products: Product[] }) {
         </div>
         <a href="/offers" className="text-sm font-bold text-primary hover:underline">كل العروض ←</a>
       </div>
-      <div className="group relative">
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-background to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-background to-transparent" />
-        <div className="flex w-max animate-marquee-img gap-5 px-4 group-hover:[animation-play-state:paused]">
-          {list.map((p, i) => {
+      <div className="relative">
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-8 bg-gradient-to-l from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-8 bg-gradient-to-r from-background to-transparent" />
+        <div className="no-scrollbar flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2">
+          {products.map((p, i) => {
             const discount = p.oldPrice && p.price
               ? Math.max(0, Math.round((1 - p.price / p.oldPrice) * 100)) : 0;
             return (
               <a
                 key={`${p.id}-${i}`}
                 href="/offers"
-                className="group/card relative block w-[240px] flex-none overflow-hidden rounded-2xl bg-gradient-card shadow-card ring-1 ring-border/40 transition-transform hover:-translate-y-1 hover:shadow-elegant md:w-[280px]"
+                className="group/card relative block w-[220px] flex-none snap-start overflow-hidden rounded-2xl bg-gradient-card shadow-card ring-1 ring-border/40 transition-transform hover:-translate-y-1 hover:shadow-elegant md:w-[260px]"
               >
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <img
