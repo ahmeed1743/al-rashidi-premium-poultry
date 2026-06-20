@@ -62,34 +62,41 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="flex flex-1 flex-col gap-2 p-4">
           <h3 className="text-base font-extrabold leading-tight md:text-lg">{product.name}</h3>
           <p className="line-clamp-2 text-xs text-muted-foreground md:text-sm">{product.description}</p>
-          <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-            <div className="flex flex-wrap items-baseline gap-1.5">
-              {product.price > 0 ? (
-                <>
+          <div className="mt-auto flex flex-col gap-2.5 pt-2">
+            {product.price > 0 ? (
+              <div className="flex items-end justify-between gap-2">
+                <div className="flex flex-col leading-none">
                   {product.oldPrice && (
-                    <span className="rounded-md bg-destructive/15 px-1.5 py-0.5 text-[11px] font-extrabold text-destructive line-through decoration-2">
+                    <span className="text-[11px] font-bold text-muted-foreground/80 line-through decoration-destructive decoration-2">
                       {product.oldPrice} ج
                     </span>
                   )}
-                  <span className="text-lg font-black text-primary">{product.price}</span>
-                  <span className="text-[11px] font-bold text-muted-foreground">
-                    ج{product.pairUnit ? " /جوز" : ""}
+                  <div className="mt-0.5 flex items-baseline gap-1">
+                    <span className="text-2xl font-black text-primary">{product.price}</span>
+                    <span className="text-[11px] font-bold text-muted-foreground">
+                      ج{product.pairUnit ? " /جوز" : ""}
+                    </span>
+                  </div>
+                </div>
+                {product.oldPrice && discount > 0 && (
+                  <span className="rounded-md bg-emerald-600/15 px-1.5 py-0.5 text-[11px] font-black text-emerald-500">
+                    وفّر {product.oldPrice - product.price} ج
                   </span>
-                </>
-              ) : (
-                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-gold">
-                  <Phone className="h-3 w-3" /> اتصل للسعر
-                </span>
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-gold">
+                <Phone className="h-3 w-3" /> اتصل للسعر
+              </span>
+            )}
             <button
               onClick={() => !sold && setOpen(true)}
               disabled={sold}
-              className="inline-flex h-10 items-center gap-1.5 rounded-full bg-gradient-primary px-4 text-xs font-extrabold text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-primary px-4 text-sm font-extrabold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
               aria-label="أضف للسلة"
             >
               <Plus className="h-4 w-4" />
-              {sold ? "نفذ" : "أضف"}
+              {sold ? "نفذ" : "أضف للسلة"}
             </button>
           </div>
         </div>
