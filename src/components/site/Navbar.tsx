@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logoAsset from "@/assets/logo.jpg.asset.json";
@@ -71,6 +71,21 @@ export function Navbar() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/products"
+            hash="site-search"
+            onClick={() => {
+              setTimeout(() => {
+                const el = document.getElementById("site-search") as HTMLInputElement | null;
+                el?.focus();
+                el?.scrollIntoView({ behavior: "smooth", block: "center" });
+              }, 100);
+            }}
+            aria-label="بحث"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full glass"
+          >
+            <Search className="h-5 w-5" />
+          </Link>
           <ThemeToggle />
           <button
             onClick={() => setMobile((v) => !v)}
