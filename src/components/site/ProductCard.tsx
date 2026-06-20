@@ -92,10 +92,10 @@ export function ProductCard({ product }: { product: Product }) {
             <button
               onClick={() => !sold && setOpen(true)}
               disabled={sold}
-              className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-full bg-gradient-primary px-4 text-sm font-extrabold text-primary-foreground shadow-elegant transition-transform hover:scale-[1.02] active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
+              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-gradient-primary px-5 text-base font-extrabold text-primary-foreground shadow-lg ring-1 ring-white/20 transition-all hover:shadow-xl hover:scale-[1.03] hover:-translate-y-0.5 active:scale-95 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:scale-100"
               aria-label="أضف للسلة"
             >
-              <Plus className="h-4 w-4" />
+              <Plus className="h-5 w-5" />
               {sold ? "نفذ" : "أضف للسلة"}
             </button>
           </div>
