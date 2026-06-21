@@ -96,7 +96,7 @@ export function ProductCard({ product }: { product: Product }) {
               aria-label="أضف للسلة"
             >
               <Plus className="h-5 w-5" />
-              {sold ? "نفذ" : "أضف للسلة"}
+              {sold ? "نفذ" : "أضف"}
             </button>
           </div>
         </div>
