@@ -103,24 +103,18 @@ function CheckoutPage() {
     lines.push(`💰 الدفع: ${pay === "cash" ? "كاش" : "Instapay"}`);
     const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
     const disc = computeDiscount(sub);
+    if (coupon) {
+      lines.push(`🎟️ كوبون: ${coupon.code} (-${disc} ج.م)`);
+      lines.push(`💵 الإجمالي: ${(sub - disc).toFixed(2)} ج.م`);
+    }
     lines.push("");
     lines.push("🛒 *المنتجات*");
-    lines.push("━━━━━━━━━━━━━━");
     items.forEach((it, i) => {
       const unitTxt = it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : "";
-      lines.push(`- ${it.name}  ×${it.quantity}${unitTxt}`);
-      if (it.options) Object.entries(it.options).forEach(([k, v]) => lines.push(`    • ${k}: ${v}`));
+      lines.push(`${i + 1}. ${it.name}  ×${it.quantity}${unitTxt}`);
+      if (it.options) Object.entries(it.options).forEach(([k, v]) => lines.push(`    - ${k}: ${v}`));
       if (it.generalNote) lines.push(`    📝 ${it.generalNote}`);
-      if (i < items.length - 1) lines.push("━━━━━━━━━━━━━━");
     });
-    lines.push("━━━━━━━━━━━━━━");
-    lines.push(`💵 المجموع: ${sub.toFixed(2)} ج.م`);
-    if (coupon && disc > 0) {
-      lines.push(`🎟️ كوبون ${coupon.code}: -${disc.toFixed(2)} ج.م`);
-      lines.push(`✅ الإجمالي بعد الخصم: ${(sub - disc).toFixed(2)} ج.م`);
-    } else {
-      lines.push(`✅ الإجمالي: ${sub.toFixed(2)} ج.م`);
-    }
     if (form.notes) {
       lines.push("");
       lines.push(`📌 ملاحظات: ${form.notes}`);
