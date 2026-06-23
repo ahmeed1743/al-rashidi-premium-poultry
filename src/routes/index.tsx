@@ -7,8 +7,8 @@ import { Marquee, OffersMarquee } from "@/components/site/Marquee";
 import { HScroll } from "@/components/site/HScroll";
 import { fetchProducts } from "@/lib/products-api";
 import { PRODUCTS } from "@/data/products";
-import logoAsset from "@/assets/logo.jpg.asset.json";
 import { StoryCarousel } from "@/components/site/StoryCarousel";
+import { useSiteLogo } from "@/hooks/use-site-logo";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/")({
@@ -23,6 +23,7 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
+  const { url: logoUrl, isLoading: logoLoading } = useSiteLogo();
 
   const offers = products.filter((p) => !p.soldOut && (p.oldPrice || p.badge));
   const chicken = products.filter((p) => p.section === "chicken").slice(0, 8);
@@ -58,7 +59,13 @@ function Home() {
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }} className="relative">
             <div className="absolute inset-0 rounded-full bg-gradient-primary opacity-30 blur-3xl" />
-            <img src={logoAsset.url} alt="طيور الرشيدي" width={1024} height={1024} className="relative mx-auto rounded-3xl object-cover shadow-elegant" />
+            {logoLoading ? (
+              <div className="relative mx-auto aspect-square w-full max-w-[420px] overflow-hidden rounded-3xl bg-gradient-to-br from-primary/20 via-muted to-primary/10 shadow-elegant">
+                <div className="absolute inset-0 animate-[shimmer_1.8s_infinite] bg-[linear-gradient(110deg,transparent_30%,hsl(var(--primary)/0.15)_50%,transparent_70%)] bg-[length:200%_100%]" />
+              </div>
+            ) : (
+              <img src={logoUrl} alt="طيور الرشيدي" width={1024} height={1024} className="relative mx-auto rounded-3xl object-cover shadow-elegant" />
+            )}
           </motion.div>
         </div>
       </section>
