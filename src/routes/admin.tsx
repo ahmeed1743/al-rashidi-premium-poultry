@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
+import { fetchSetting, saveSetting, fileToDataUrl } from "@/lib/site-settings";
+import { useQueryClient } from "@tanstack/react-query";
+import logoAsset from "@/assets/logo.jpg.asset.json";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -109,6 +112,7 @@ function AdminPage() {
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
+            <TabsTrigger value="branding">🎨 الشعار</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
@@ -116,6 +120,7 @@ function AdminPage() {
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
+          <TabsContent value="branding"><BrandingTab /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
