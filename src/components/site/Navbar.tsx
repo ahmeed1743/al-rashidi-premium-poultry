@@ -2,8 +2,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Menu, X, Search } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import logoAsset from "@/assets/logo.jpg.asset.json";
 import { ThemeToggle } from "./ThemeToggle";
+import { useSiteLogo } from "@/hooks/use-site-logo";
 
 const links = [
   { to: "/", label: "الرئيسية" },
@@ -17,6 +17,7 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobile, setMobile] = useState(false);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const { url: logoUrl, isLoading: logoLoading } = useSiteLogo();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12);
@@ -35,11 +36,15 @@ export function Navbar() {
     >
       <div className="container mx-auto flex h-16 items-center justify-between px-4 md:h-20">
         <Link to="/" className="flex items-center gap-2">
-          <img
-            src={logoAsset.url}
-            alt="طيور الرشيدي"
-            className="h-11 w-11 rounded-full object-cover shadow-glow ring-2 ring-primary/40"
-          />
+          {logoLoading ? (
+            <div className="h-11 w-11 animate-pulse rounded-full bg-gradient-to-br from-primary/30 to-primary/10 shadow-glow ring-2 ring-primary/40" />
+          ) : (
+            <img
+              src={logoUrl}
+              alt="طيور الرشيدي"
+              className="h-11 w-11 rounded-full object-cover shadow-glow ring-2 ring-primary/40"
+            />
+          )}
           <div className="leading-tight">
             <div className="text-base font-extrabold md:text-lg">طيور الرشيدي</div>
             <div className="text-[10px] text-muted-foreground md:text-xs">الجودة الأصلية</div>

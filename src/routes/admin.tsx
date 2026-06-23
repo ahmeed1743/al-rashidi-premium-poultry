@@ -18,6 +18,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
+import { fetchSetting, saveSetting, fileToDataUrl } from "@/lib/site-settings";
+import { useQueryClient } from "@tanstack/react-query";
+import logoAsset from "@/assets/logo.jpg.asset.json";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -109,6 +112,7 @@ function AdminPage() {
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
+            <TabsTrigger value="branding">🎨 الشعار</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
@@ -116,6 +120,7 @@ function AdminPage() {
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
+          <TabsContent value="branding"><BrandingTab /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
@@ -279,6 +284,96 @@ function Dashboard() {
           </table>
         </div>
       </Card>
+      </div>
+    </div>
+  );
+}
+
+function BrandingTab() {
+  const qc = useQueryClient();
+  const [current, setCurrent] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    fetchSetting("logo_url").then(setCurrent);
+  }, []);
+
+  const onPick = async (f: File | null) => {
+    if (!f) return;
+    if (f.size > 1.5 * 1024 * 1024) {
+      toast.error("الصورة كبيرة جداً (الحد الأقصى 1.5MB)");
+      return;
+    }
+    const dataUrl = await fileToDataUrl(f);
+    setPreview(dataUrl);
+  };
+
+  const save = async () => {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      await saveSetting("logo_url", preview);
+      setCurrent(preview);
+      setPreview(null);
+      if (fileRef.current) fileRef.current.value = "";
+      qc.invalidateQueries({ queryKey: ["site-settings", "logo_url"] });
+      toast.success("تم تحديث الشعار");
+    } catch (e: any) {
+      toast.error(e?.message || "فشل الحفظ");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const reset = async () => {
+    setBusy(true);
+    try {
+      await saveSetting("logo_url", "");
+      setCurrent(null);
+      qc.invalidateQueries({ queryKey: ["site-settings", "logo_url"] });
+      toast.success("تمت إعادة الشعار الافتراضي");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const displayed = preview || current || logoAsset.url;
+
+  return (
+    <div className="mt-6 grid gap-6 md:grid-cols-2">
+      <div className="rounded-2xl bg-gradient-card p-6 shadow-card">
+        <h3 className="mb-4 text-lg font-extrabold">شعار الموقع</h3>
+        <div className="mb-4 flex items-center justify-center rounded-2xl bg-secondary/40 p-6">
+          <img src={displayed} alt="logo preview" className="h-40 w-40 rounded-2xl object-cover shadow-elegant ring-2 ring-primary/30" />
+        </div>
+        <p className="text-xs text-muted-foreground">يظهر الشعار في الهيدر وصفحة البداية. يفضل صورة مربعة (1:1) بحجم أقل من 1.5MB.</p>
+      </div>
+      <div className="rounded-2xl bg-gradient-card p-6 shadow-card">
+        <h3 className="mb-4 text-lg font-extrabold">تغيير الشعار</h3>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={(e) => onPick(e.target.files?.[0] || null)}
+          className="block w-full cursor-pointer rounded-xl border border-border bg-background p-3 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-gradient-primary file:px-4 file:py-2 file:text-sm file:font-bold file:text-primary-foreground"
+        />
+        {preview && (
+          <div className="mt-4 rounded-xl bg-primary/10 p-3 text-xs text-primary">
+            ✓ معاينة جاهزة — اضغط حفظ لاعتمادها على الموقع
+          </div>
+        )}
+        <div className="mt-4 flex gap-2">
+          <Button onClick={save} disabled={!preview || busy} className="bg-gradient-primary text-primary-foreground">
+            <Save className="ml-2 h-4 w-4" /> حفظ الشعار
+          </Button>
+          {current && (
+            <Button onClick={reset} variant="outline" disabled={busy}>
+              <RefreshCw className="ml-2 h-4 w-4" /> الشعار الافتراضي
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );
