@@ -44,9 +44,9 @@ type Stats = {
   recentOrders: any[];
 };
 
-const CATEGORIES = ["chicken", "duck", "turkey", "pigeon", "marinated", "parts", "other"];
+const CATEGORIES = ["offers", "chicken", "duck", "turkey", "pigeon", "marinated", "parts", "other"];
 const CAT_LABELS: Record<string, string> = {
-  chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
+  offers: "🔥 عروض", chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
   marinated: "متبلات", parts: "أجزاء", other: "أخرى",
 };
 const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
