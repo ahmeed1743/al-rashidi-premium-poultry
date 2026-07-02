@@ -221,6 +221,9 @@ function Dashboard() {
         <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
+      <HomeHeroCard />
+
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="الطلبات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
           <ResponsiveContainer width="100%" height={240}>
