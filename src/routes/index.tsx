@@ -8,6 +8,7 @@ import { HScroll } from "@/components/site/HScroll";
 import { fetchProducts } from "@/lib/products-api";
 import { PRODUCTS } from "@/data/products";
 import logoAsset from "@/assets/logo.jpg.asset.json";
+import { supabase } from "@/integrations/supabase/client";
 import { StoryCarousel } from "@/components/site/StoryCarousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -23,8 +24,15 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
+  const { data: heroImage } = useQuery({
+    queryKey: ["setting", "hero_image"],
+    queryFn: async () => {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "hero_image").maybeSingle();
+      return (data?.value as string) || "";
+    },
+  });
 
-  const offers = products.filter((p) => !p.soldOut && (p.oldPrice || p.badge));
+  const offers = products.filter((p) => !p.soldOut && (p.section === "offers" || p.oldPrice || p.badge));
   const chicken = products.filter((p) => p.section === "chicken").slice(0, 8);
   const marinades = products.filter((p) => p.section === "marinated").slice(0, 10);
   const parts = products.filter((p) => p.section === "parts").slice(0, 10);
@@ -58,7 +66,7 @@ function Home() {
           </motion.div>
           <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }} className="relative">
             <div className="absolute inset-0 rounded-full bg-gradient-primary opacity-30 blur-3xl" />
-            <img src={logoAsset.url} alt="طيور الرشيدي" width={1024} height={1024} className="relative mx-auto rounded-3xl object-cover shadow-elegant" />
+            <img src={heroImage || logoAsset.url} alt="طيور الرشيدي" width={1024} height={1024} className="relative mx-auto rounded-3xl object-cover shadow-elegant" />
           </motion.div>
         </div>
       </section>

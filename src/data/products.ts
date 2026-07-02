@@ -6,7 +6,7 @@ import rabbitImg from "@/assets/p-rabbit.jpg";
 import marinatedImg from "@/assets/p-marinated.jpg";
 import mealImg from "@/assets/p-meal.jpg";
 
-export type SectionId = "chicken" | "duck" | "turkey" | "pigeon" | "marinated" | "parts" | "other";
+export type SectionId = "chicken" | "duck" | "turkey" | "pigeon" | "marinated" | "parts" | "other" | "offers";
 
 export type ProductConfig = {
   halfPair?: boolean;       // pair unit can be 0.5
@@ -46,6 +46,7 @@ export interface Product {
 }
 
 export const SECTIONS: { id: SectionId; label: string; emoji: string }[] = [
+  { id: "offers", label: "العروض", emoji: "🔥" },
   { id: "chicken", label: "فراخ", emoji: "🐔" },
   { id: "duck", label: "بط", emoji: "🦆" },
   { id: "turkey", label: "رومي", emoji: "🦃" },

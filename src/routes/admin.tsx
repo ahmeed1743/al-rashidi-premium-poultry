@@ -44,9 +44,9 @@ type Stats = {
   recentOrders: any[];
 };
 
-const CATEGORIES = ["chicken", "duck", "turkey", "pigeon", "marinated", "parts", "other"];
+const CATEGORIES = ["offers", "chicken", "duck", "turkey", "pigeon", "marinated", "parts", "other"];
 const CAT_LABELS: Record<string, string> = {
-  chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
+  offers: "🔥 عروض", chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
   marinated: "متبلات", parts: "أجزاء", other: "أخرى",
 };
 const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
@@ -220,6 +220,9 @@ function Dashboard() {
         <Stat icon={<ShoppingBag className="h-5 w-5" />} label="طلبات اليوم" value={stats.ordersToday} sub={`${stats.ordersTotal} طلب إجمالي`} />
         <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
+
+      <HomeHeroCard />
+
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="الطلبات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
@@ -1020,6 +1023,47 @@ function Card({ title, icon, className = "", children }: { title: string; icon?:
 /* ------------------------------------------------------------------ */
 /* Image uploader (Supabase storage: product-images)                   */
 /* ------------------------------------------------------------------ */
+function HomeHeroCard() {
+  const [url, setUrl] = useState<string>("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "hero_image").maybeSingle();
+      setUrl((data?.value as string) || "");
+      setLoading(false);
+    })();
+  }, []);
+
+  const save = async (newUrl: string) => {
+    setSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "hero_image", value: newUrl, updated_at: new Date().toISOString() }, { onConflict: "key" });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    setUrl(newUrl);
+    toast.success("تم تحديث صورة الصفحة الرئيسية");
+  };
+
+  return (
+    <Card title="🖼️ صورة الصفحة الرئيسية (Hero)">
+      {loading ? (
+        <div className="py-6 text-center text-sm text-muted-foreground">جاري التحميل...</div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            هذه الصورة تظهر في الـ Hero بالصفحة الرئيسية. ارفع صورة أو الصق رابط مباشر. لو فاضية، هيتم عرض اللوجو الافتراضي.
+          </p>
+          <ImageUploader value={url} onChange={save} productId="hero" />
+          {saving && <div className="text-xs text-muted-foreground">جاري الحفظ...</div>}
+        </div>
+      )}
+    </Card>
+  );
+}
+
 function ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
   const [uploading, setUploading] = useState(false);
   const onFile = async (file: File) => {
