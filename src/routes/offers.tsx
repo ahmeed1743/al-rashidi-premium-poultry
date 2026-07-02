@@ -17,7 +17,7 @@ export const Route = createFileRoute("/offers")({
 
 function OffersPage() {
   const { data: products = PRODUCTS } = useQuery({ queryKey: ["products"], queryFn: () => fetchProducts(false) });
-  const offers = products.filter((p) => !p.soldOut && (p.oldPrice || p.badge));
+  const offers = products.filter((p) => !p.soldOut && (p.section === "offers" || p.oldPrice || p.badge));
   return (
     <SiteLayout>
       <div className="container mx-auto px-4 py-10">
