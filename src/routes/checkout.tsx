@@ -101,17 +101,22 @@ function CheckoutPage() {
       if (form.floorApt) lines.push(`  • الدور والشقة: ${form.floorApt}`);
     }
     lines.push(`💰 الدفع: ${pay === "cash" ? "كاش" : "Instapay"}`);
-    const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
-    const disc = computeDiscount(sub);
     if (coupon) {
+      const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
+      const disc = computeDiscount(sub);
       lines.push(`🎟️ كوبون: ${coupon.code} (-${disc} ج.م)`);
-      lines.push(`💵 الإجمالي: ${(sub - disc).toFixed(2)} ج.م`);
     }
     lines.push("");
     lines.push("🛒 *المنتجات*");
     items.forEach((it, i) => {
       const unitTxt = it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : "";
-      lines.push(`${i + 1}. ${it.name}  ×${it.quantity}${unitTxt}`);
+      const prod = products.find((p) => p.id === it.productId);
+      const isOffer = prod?.section === "offers";
+      const prefix = isOffer ? "🔥 [عرض] " : "";
+      lines.push(`${i + 1}. ${prefix}${it.name}  ×${it.quantity}${unitTxt}`);
+      if (isOffer) {
+        lines.push(`    💰 سعر العرض: ${(it.price * it.quantity).toFixed(2)} ج.م`);
+      }
       if (it.options) Object.entries(it.options).forEach(([k, v]) => lines.push(`    - ${k}: ${v}`));
       if (it.generalNote) lines.push(`    📝 ${it.generalNote}`);
     });
