@@ -1066,11 +1066,6 @@ function HomeHeroCard() {
 }
 
 function ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
-  // (unchanged below)
-  return _ImageUploader({ value, onChange, productId });
-}
-
-function _ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
   const [uploading, setUploading] = useState(false);
   const onFile = async (file: File) => {
     setUploading(true);
