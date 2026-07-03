@@ -63,6 +63,126 @@ const PRESET_LABELS: Record<string, string> = {
 };
 const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز", "موصى به", "تم النفاذ"];
 
+/* ------------------------------------------------------------------ */
+/* Spin Wheel Admin                                                    */
+/* ------------------------------------------------------------------ */
+type SpinPrize = { label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
+type SpinConfig = { enabled: boolean; prizes: SpinPrize[]; cooldownDays?: number };
+
+function SpinWheelAdminCard() {
+  const [cfg, setCfg] = useState<SpinConfig>({ enabled: false, prizes: [], cooldownDays: 7 });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "spin_wheel").maybeSingle();
+      if (data?.value) {
+        try {
+          const parsed = JSON.parse(data.value as string) as SpinConfig;
+          setCfg({ enabled: !!parsed.enabled, prizes: parsed.prizes || [], cooldownDays: parsed.cooldownDays ?? 7 });
+        } catch { /* ignore */ }
+      }
+      setLoading(false);
+    })();
+  }, []);
+
+  const save = async (next: SpinConfig) => {
+    setCfg(next);
+    setSaving(true);
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "spin_wheel", value: JSON.stringify(next), updated_at: new Date().toISOString() }, { onConflict: "key" });
+    setSaving(false);
+    if (error) toast.error(error.message);
+  };
+
+  const addPrize = () => save({ ...cfg, prizes: [...cfg.prizes, { label: "جائزة", type: "none" }] });
+  const removePrize = (i: number) => save({ ...cfg, prizes: cfg.prizes.filter((_, idx) => idx !== i) });
+  const updatePrize = (i: number, patch: Partial<SpinPrize>) =>
+    save({ ...cfg, prizes: cfg.prizes.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) });
+
+  if (loading) return null;
+
+  return (
+    <Card title="🎡 عجلة الحظ">
+      <div className="space-y-4">
+        <div className="flex items-center justify-between rounded-lg bg-secondary/30 p-3">
+          <div>
+            <div className="font-bold">تفعيل العجلة على الموقع</div>
+            <div className="text-xs text-muted-foreground">لما تكون شغالة، هيظهر زرار للعميل يقدر يلعب ويربح جائزة.</div>
+          </div>
+          <Switch checked={cfg.enabled} onCheckedChange={(v) => save({ ...cfg, enabled: v })} />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <label className="text-xs font-bold">فترة الانتظار بين المحاولات (أيام):</label>
+          <Input
+            type="number"
+            min={0}
+            className="h-8 w-20"
+            value={cfg.cooldownDays ?? 7}
+            onChange={(e) => save({ ...cfg, cooldownDays: Number(e.target.value) || 0 })}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h4 className="font-bold">الجوائز ({cfg.prizes.length})</h4>
+            <Button size="sm" variant="outline" onClick={addPrize}>
+              <Plus className="ml-1 h-4 w-4" /> إضافة جائزة
+            </Button>
+          </div>
+          {cfg.prizes.length < 2 && (
+            <p className="rounded bg-amber-100 p-2 text-xs text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+              أضف على الأقل جائزتين لتظهر العجلة.
+            </p>
+          )}
+          {cfg.prizes.map((p, i) => (
+            <div key={i} className="grid gap-2 rounded-lg border border-border bg-background p-3 md:grid-cols-[1fr,140px,1fr,auto]">
+              <div>
+                <label className="mb-1 block text-[10px] font-bold">اسم الجائزة</label>
+                <Input value={p.label} onChange={(e) => updatePrize(i, { label: e.target.value })} placeholder="خصم 10%" />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-bold">النوع</label>
+                <select
+                  value={p.type}
+                  onChange={(e) => updatePrize(i, { type: e.target.value as SpinPrize["type"] })}
+                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                >
+                  <option value="none">بدون</option>
+                  <option value="coupon">كوبون</option>
+                  <option value="gift">هدية</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-bold">
+                  {p.type === "coupon" ? "كود الكوبون" : "ملاحظة"}
+                </label>
+                <Input
+                  value={p.type === "coupon" ? p.code || "" : p.note || ""}
+                  onChange={(e) => updatePrize(i, p.type === "coupon" ? { code: e.target.value } : { note: e.target.value })}
+                  placeholder={p.type === "coupon" ? "WELCOME10" : "تفاصيل الهدية"}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button size="icon" variant="ghost" onClick={() => removePrize(i)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {saving && <div className="text-xs text-muted-foreground">جاري الحفظ...</div>}
+        <p className="text-[11px] text-muted-foreground">
+          💡 نصيحة: للكوبونات، أنشئ الكود أولاً من تبويب الكوبونات ثم ضع نفس الكود هنا.
+        </p>
+      </div>
+    </Card>
+  );
+}
+
 function AdminPage() {
   const nav = useNavigate();
   const [authed, setAuthed] = useState<boolean | null>(null);
