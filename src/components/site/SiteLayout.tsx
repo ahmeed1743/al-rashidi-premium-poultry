@@ -3,6 +3,7 @@ import { Footer } from "./Footer";
 import { CartDrawer } from "./CartDrawer";
 import { CartFab } from "./CartFab";
 import { Chatbot } from "./Chatbot";
+import { SpinWheel } from "./SpinWheel";
 import { Toaster } from "@/components/ui/sonner";
 import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
@@ -19,6 +20,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
       <CartFab />
       <CartDrawer />
       <Chatbot />
+      <SpinWheel />
       <Toaster position="top-center" richColors />
     </div>
   );
