@@ -51,7 +51,8 @@ function CheckoutPage() {
   const [method, setMethod] = useState<Method>("delivery");
   const [pay, setPay] = useState<Pay>("cash");
   const [whatsapp, setWhatsapp] = useState(WHATSAPP_NUMBERS[0].id);
-  const [timeMode, setTimeMode] = useState<"asap" | "scheduled">("asap");
+  const isAfter5 = new Date().getHours() >= 17;
+  const [timeMode, setTimeMode] = useState<"asap" | "scheduled">(isAfter5 ? "scheduled" : "asap");
   const [scheduledTime, setScheduledTime] = useState(SCHEDULED_SLOTS[0]);
   const [form, setForm] = useState({ name: "", phone: "", area: "", street: "", floorApt: "", notes: "" });
   const [savedFound, setSavedFound] = useState(false);
@@ -59,7 +60,12 @@ function CheckoutPage() {
   const [coupon, setCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
   const [couponBusy, setCouponBusy] = useState(false);
 
-  const timeSlot = timeMode === "asap" ? ASAP_SLOT : scheduledTime;
+  const timeSlot =
+    timeMode === "asap"
+      ? ASAP_SLOT
+      : isAfter5
+        ? `${scheduledTime} (غداً)`
+        : scheduledTime;
   const branch = PICKUP_BRANCH;
 
   const upd = (k: keyof typeof form, v: string) => setForm((s) => ({ ...s, [k]: v }));
@@ -255,13 +261,29 @@ function CheckoutPage() {
 
           <Section title="وقت الاستلام / التوصيل">
             <div className="space-y-3">
+              {isAfter5 && (
+                <div className="flex items-start gap-2 rounded-lg border-2 border-amber-400/60 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+                  <span>🌙</span>
+                  <span>
+                    الطلبات بعد الساعة 5 مساءً يتم تجهيزها لليوم التالي. اختر موعد من 11 صباحاً إلى 4 مساءً.
+                  </span>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => setTimeMode("asap")} className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${timeMode === "asap" ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant" : "border-border bg-secondary/40"}`}>
+                <button
+                  onClick={() => !isAfter5 && setTimeMode("asap")}
+                  disabled={isAfter5}
+                  className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${
+                    timeMode === "asap"
+                      ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant"
+                      : "border-border bg-secondary/40"
+                  } ${isAfter5 ? "cursor-not-allowed opacity-50" : ""}`}
+                >
                   في أقرب وقت
                   <div className="mt-0.5 text-[11px] opacity-90">خلال ساعتين إلى 3 ساعات</div>
                 </button>
                 <button onClick={() => setTimeMode("scheduled")} className={`rounded-xl border-2 px-4 py-3 text-sm font-bold transition-all ${timeMode === "scheduled" ? "border-primary bg-gradient-primary text-primary-foreground shadow-elegant" : "border-border bg-secondary/40"}`}>
-                  استلام في ميعاد
+                  {isAfter5 ? "استلام غداً" : "استلام في ميعاد"}
                   <div className="mt-0.5 text-[11px] opacity-90">من 11 صباحاً إلى 4 مساءً</div>
                 </button>
               </div>
