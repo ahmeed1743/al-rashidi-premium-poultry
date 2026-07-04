@@ -177,32 +177,37 @@ export function SpinWheel() {
           </div>
 
           {result ? (
-            <div className="rounded-xl bg-gradient-to-br from-amber-100 to-pink-100 p-4 text-center dark:from-amber-900/30 dark:to-pink-900/30">
-              <Gift className="mx-auto mb-2 h-8 w-8 text-amber-600" />
-              <div className="text-lg font-black text-foreground">مبروك! ربحت</div>
-              <div className="text-xl font-black text-primary">{result.label}</div>
-              {result.note && <p className="mt-1 text-xs text-muted-foreground">{result.note}</p>}
+            <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-center backdrop-blur">
+              <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-rose-500 shadow-lg">
+                <Gift className="h-7 w-7 text-white" />
+              </div>
+              <div className="text-sm font-bold text-white/80">🎉 مبروك! ربحت</div>
+              <div className="mt-1 text-2xl font-black text-amber-300">{result.label}</div>
+              {result.note && <p className="mt-1 text-xs text-white/60">{result.note}</p>}
               {result.type === "coupon" && result.code && (
-                <div className="mt-3">
-                  <div className="mb-1 text-xs text-muted-foreground">استخدم الكود عند الدفع:</div>
+                <div className="mt-4">
+                  <div className="mb-1 text-[11px] text-white/60">استخدم الكود عند الدفع:</div>
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText(result.code!);
                       toast.success("تم نسخ الكود");
                     }}
-                    className="mx-auto inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-primary bg-background px-4 py-2 text-lg font-mono font-black text-primary"
+                    className="mx-auto inline-flex items-center gap-2 rounded-lg border-2 border-dashed border-amber-300 bg-white/10 px-4 py-2 font-mono text-lg font-black text-amber-200"
                   >
                     {result.code}
                     <Copy className="h-4 w-4" />
                   </button>
                 </div>
               )}
-              {result.type === "gift" && (
-                <p className="mt-2 text-xs text-muted-foreground">
-                  اذكر جائزتك في ملاحظات الطلب عند الدفع.
+              {result.type !== "none" && (
+                <p className="mt-3 rounded-lg bg-emerald-500/20 px-3 py-2 text-xs font-bold text-emerald-200">
+                  ✓ تم حفظ الجائزة — هتنضاف تلقائياً على طلبك القادم
                 </p>
               )}
-              <Button onClick={() => setOpen(false)} className="mt-4 w-full bg-gradient-primary text-primary-foreground">
+              <Button
+                onClick={() => setOpen(false)}
+                className="mt-4 w-full bg-gradient-to-r from-amber-400 to-rose-500 text-white hover:opacity-90"
+              >
                 تمام
               </Button>
             </div>
@@ -212,13 +217,13 @@ export function SpinWheel() {
                 <Button
                   onClick={spin}
                   disabled={spinning}
-                  className="h-12 w-full bg-gradient-to-r from-amber-400 via-pink-500 to-purple-600 text-base font-black text-white shadow-elegant"
+                  className="h-14 w-full rounded-xl bg-gradient-to-r from-amber-400 via-rose-500 to-fuchsia-600 text-lg font-black text-white shadow-lg hover:opacity-95"
                 >
-                  {spinning ? "جاري الدوران..." : "🎯 لف العجلة"}
+                  {spinning ? "🎡 جاري الدوران..." : "🎯 لف العجلة"}
                 </Button>
               ) : (
-                <div className="rounded-lg bg-muted/50 p-3 text-sm text-muted-foreground">
-                  لعبت مؤخراً — رجّع تاني بعد فترة 🕐
+                <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white/70">
+                  🕐 لعبت مؤخراً — رجّع تاني بعد فترة
                 </div>
               )}
             </div>
