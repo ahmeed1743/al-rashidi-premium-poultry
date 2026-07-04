@@ -229,6 +229,7 @@ function AdminPage() {
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
+            <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
@@ -236,6 +237,7 @@ function AdminPage() {
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
+          <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
