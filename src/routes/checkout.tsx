@@ -386,6 +386,22 @@ function CheckoutPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="space-y-4 rounded-2xl bg-gradient-card p-5 shadow-card">
             <h3 className="text-lg font-extrabold">ملخص الطلب</h3>
+            {prize && (
+              <div className="rounded-xl border-2 border-dashed border-amber-400 bg-gradient-to-br from-amber-50 to-rose-50 p-3 text-sm dark:from-amber-900/20 dark:to-rose-900/20">
+                <div className="flex items-center gap-2 font-black text-rose-600 dark:text-rose-300">
+                  🎁 جائزة عجلة الحظ
+                </div>
+                <div className="mt-1 font-bold">{prize.label}</div>
+                {prize.type === "coupon" && prize.code && (
+                  <div className="mt-1 text-xs">
+                    الكود: <span className="font-mono font-black">{prize.code}</span>
+                  </div>
+                )}
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  ✓ هتنضاف تلقائياً على طلبك وهيتم تسليمها معاه
+                </p>
+              </div>
+            )}
             <div className="space-y-3 text-sm">
               {items.map((it) => (
                 <div key={it.uid} className="border-b border-border/50 pb-2 last:border-0">
