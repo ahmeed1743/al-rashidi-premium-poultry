@@ -9,9 +9,21 @@ type Prize = { label: string; type: "coupon" | "gift" | "none"; code?: string; n
 type Config = { enabled: boolean; prizes: Prize[]; cooldownDays?: number };
 
 const LS_KEY = "spin_wheel_last_spin";
+const PRIZE_KEY = "spin_wheel_prize";
+const SESSION_KEY = "spin_wheel_session";
+
+function getSessionId() {
+  let s = localStorage.getItem(SESSION_KEY);
+  if (!s) {
+    s = (crypto.randomUUID?.() || String(Date.now() + Math.random()));
+    localStorage.setItem(SESSION_KEY, s);
+  }
+  return s;
+}
+
 const COLORS = [
-  "#ef4444", "#f59e0b", "#10b981", "#3b82f6", "#8b5cf6",
-  "#ec4899", "#14b8a6", "#f97316",
+  "#f43f5e", "#f59e0b", "#10b981", "#3b82f6",
+  "#a855f7", "#ec4899", "#14b8a6", "#f97316",
 ];
 
 export function SpinWheel() {
