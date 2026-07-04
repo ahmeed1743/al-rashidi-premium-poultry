@@ -17,6 +17,18 @@ import { fetchProducts } from "@/lib/products-api";
 import { PRODUCTS } from "@/data/products";
 import type { CartItem } from "@/store/cart";
 
+const PRIZE_KEY = "spin_wheel_prize";
+type ActivePrize = { id: string; label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
+function readActivePrize(): ActivePrize | null {
+  try {
+    const raw = localStorage.getItem(PRIZE_KEY);
+    if (!raw) return null;
+    const p = JSON.parse(raw) as ActivePrize;
+    if (!p?.id || p.type === "none") return null;
+    return p;
+  } catch { return null; }
+}
+
 export const Route = createFileRoute("/checkout")({
   head: () => ({
     meta: [
@@ -59,6 +71,16 @@ function CheckoutPage() {
   const [couponCode, setCouponCode] = useState("");
   const [coupon, setCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
   const [couponBusy, setCouponBusy] = useState(false);
+  const [prize, setPrize] = useState<ActivePrize | null>(null);
+
+  useEffect(() => { setPrize(readActivePrize()); }, []);
+
+  // Auto-fill coupon field from prize
+  useEffect(() => {
+    if (prize?.type === "coupon" && prize.code && !coupon) {
+      setCouponCode(prize.code);
+    }
+  }, [prize]);
 
   const timeSlot =
     timeMode === "asap"
@@ -130,6 +152,15 @@ function CheckoutPage() {
       lines.push("");
       lines.push(`📌 ملاحظات: ${form.notes}`);
     }
+    if (prize) {
+      lines.push("");
+      lines.push("━━━━━━━━━━━━━━");
+      lines.push("🎁 *جائزة عجلة الحظ*");
+      lines.push(`  • ${prize.label}`);
+      if (prize.type === "coupon" && prize.code) lines.push(`  • كود: ${prize.code}`);
+      if (prize.note) lines.push(`  • ${prize.note}`);
+      lines.push("  ⚠️ يرجى تسليم الجائزة مع الطلب");
+    }
     return encodeURIComponent(lines.join("\n"));
   };
 
@@ -198,6 +229,17 @@ function CheckoutPage() {
     const url = `https://wa.me/${whatsapp}?text=${buildMessage()}`;
     window.open(url, "_blank");
     toast.success("جاري فتح واتساب لإرسال طلبك");
+
+    // Mark prize as redeemed & clear from local storage
+    if (prize) {
+      supabase
+        .from("spin_attempts")
+        .update({ redeemed: true, redeemed_at: new Date().toISOString(), order_phone: form.phone })
+        .eq("id", prize.id)
+        .then(() => {});
+      localStorage.removeItem(PRIZE_KEY);
+      setPrize(null);
+    }
   };
 
   if (items.length === 0) {
@@ -344,6 +386,22 @@ function CheckoutPage() {
         <div className="lg:sticky lg:top-24 lg:self-start">
           <div className="space-y-4 rounded-2xl bg-gradient-card p-5 shadow-card">
             <h3 className="text-lg font-extrabold">ملخص الطلب</h3>
+            {prize && (
+              <div className="rounded-xl border-2 border-dashed border-amber-400 bg-gradient-to-br from-amber-50 to-rose-50 p-3 text-sm dark:from-amber-900/20 dark:to-rose-900/20">
+                <div className="flex items-center gap-2 font-black text-rose-600 dark:text-rose-300">
+                  🎁 جائزة عجلة الحظ
+                </div>
+                <div className="mt-1 font-bold">{prize.label}</div>
+                {prize.type === "coupon" && prize.code && (
+                  <div className="mt-1 text-xs">
+                    الكود: <span className="font-mono font-black">{prize.code}</span>
+                  </div>
+                )}
+                <p className="mt-2 text-[11px] text-muted-foreground">
+                  ✓ هتنضاف تلقائياً على طلبك وهيتم تسليمها معاه
+                </p>
+              </div>
+            )}
             <div className="space-y-3 text-sm">
               {items.map((it) => (
                 <div key={it.uid} className="border-b border-border/50 pb-2 last:border-0">

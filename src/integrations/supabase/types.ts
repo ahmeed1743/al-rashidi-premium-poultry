@@ -230,6 +230,42 @@ export type Database = {
         }
         Relationships: []
       }
+      spin_attempts: {
+        Row: {
+          created_at: string
+          id: string
+          order_phone: string | null
+          prize_code: string | null
+          prize_label: string
+          prize_type: string
+          redeemed: boolean
+          redeemed_at: string | null
+          session_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          order_phone?: string | null
+          prize_code?: string | null
+          prize_label: string
+          prize_type: string
+          redeemed?: boolean
+          redeemed_at?: string | null
+          session_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          order_phone?: string | null
+          prize_code?: string | null
+          prize_label?: string
+          prize_type?: string
+          redeemed?: boolean
+          redeemed_at?: string | null
+          session_id?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string

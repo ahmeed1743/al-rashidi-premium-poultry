@@ -229,6 +229,7 @@ function AdminPage() {
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
+            <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
@@ -236,6 +237,7 @@ function AdminPage() {
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
+          <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
@@ -1380,6 +1382,114 @@ function CouponsTab() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Spin Attempts Log                                                   */
+/* ------------------------------------------------------------------ */
+type SpinRow = {
+  id: string;
+  created_at: string;
+  session_id: string | null;
+  prize_label: string;
+  prize_type: string;
+  prize_code: string | null;
+  redeemed: boolean;
+  redeemed_at: string | null;
+  order_phone: string | null;
+};
+
+function SpinAttemptsTab() {
+  const [rows, setRows] = useState<SpinRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("spin_attempts" as any)
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(300);
+    setRows((data as any as SpinRow[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const stats = useMemo(() => {
+    const total = rows.length;
+    const wins = rows.filter((r) => r.prize_type !== "none").length;
+    const redeemed = rows.filter((r) => r.redeemed).length;
+    const pending = wins - redeemed;
+    return { total, wins, redeemed, pending };
+  }, [rows]);
+
+  const fmt = (s: string | null) => (s ? new Date(s).toLocaleString("ar-EG") : "—");
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-black">🎡 سجل محاولات عجلة الحظ</h2>
+        <Button variant="outline" size="sm" onClick={load}>
+          <RefreshCw className="ml-1 h-4 w-4" /> تحديث
+        </Button>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat icon={<Activity className="h-5 w-5" />} label="إجمالي المحاولات" value={stats.total} />
+        <Stat icon={<Tag className="h-5 w-5" />} label="جوائز محققة" value={stats.wins} />
+        <Stat icon={<Save className="h-5 w-5" />} label="تم استلامها" value={stats.redeemed} />
+        <Stat icon={<Clock className="h-5 w-5" />} label="بانتظار الاستلام" value={stats.pending} />
+      </div>
+
+      <Card title="آخر المحاولات">
+        {loading ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">جاري التحميل...</div>
+        ) : rows.length === 0 ? (
+          <div className="py-6 text-center text-sm text-muted-foreground">لا توجد محاولات بعد.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr className="border-b border-border/50">
+                  <th className="px-2 py-2">التاريخ</th>
+                  <th className="px-2 py-2">الجائزة</th>
+                  <th className="px-2 py-2">النوع</th>
+                  <th className="px-2 py-2">الكود</th>
+                  <th className="px-2 py-2">الحالة</th>
+                  <th className="px-2 py-2">هاتف العميل</th>
+                  <th className="px-2 py-2">تاريخ الاستلام</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.id} className="border-b border-border/50">
+                    <td className="px-2 py-2 text-xs">{fmt(r.created_at)}</td>
+                    <td className="px-2 py-2 font-bold">{r.prize_label}</td>
+                    <td className="px-2 py-2 text-xs">
+                      {r.prize_type === "coupon" ? "🎟️ كوبون" : r.prize_type === "gift" ? "🎁 هدية" : "— بدون"}
+                    </td>
+                    <td className="px-2 py-2 font-mono text-xs">{r.prize_code || "—"}</td>
+                    <td className="px-2 py-2">
+                      {r.prize_type === "none" ? (
+                        <span className="rounded bg-muted px-2 py-0.5 text-[11px]">لم يربح</span>
+                      ) : r.redeemed ? (
+                        <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">✓ تم الاستلام</span>
+                      ) : (
+                        <span className="rounded bg-amber-500/20 px-2 py-0.5 text-[11px] font-bold text-amber-700 dark:text-amber-300">⏳ بانتظار</span>
+                      )}
+                    </td>
+                    <td className="px-2 py-2 text-xs">{r.order_phone || "—"}</td>
+                    <td className="px-2 py-2 text-xs">{fmt(r.redeemed_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
