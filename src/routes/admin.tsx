@@ -67,10 +67,11 @@ const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز
 /* Spin Wheel Admin                                                    */
 /* ------------------------------------------------------------------ */
 type SpinPrize = { label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
-type SpinConfig = { enabled: boolean; prizes: SpinPrize[]; cooldownDays?: number };
+type SpinTrigger = "floating" | "after_order";
+type SpinConfig = { enabled: boolean; prizes: SpinPrize[]; cooldownDays?: number; trigger?: SpinTrigger };
 
 function SpinWheelAdminCard() {
-  const [cfg, setCfg] = useState<SpinConfig>({ enabled: false, prizes: [], cooldownDays: 7 });
+  const [cfg, setCfg] = useState<SpinConfig>({ enabled: false, prizes: [], cooldownDays: 7, trigger: "after_order" });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -80,7 +81,12 @@ function SpinWheelAdminCard() {
       if (data?.value) {
         try {
           const parsed = JSON.parse(data.value as string) as SpinConfig;
-          setCfg({ enabled: !!parsed.enabled, prizes: parsed.prizes || [], cooldownDays: parsed.cooldownDays ?? 7 });
+          setCfg({
+            enabled: !!parsed.enabled,
+            prizes: parsed.prizes || [],
+            cooldownDays: parsed.cooldownDays ?? 7,
+            trigger: parsed.trigger ?? "after_order",
+          });
         } catch { /* ignore */ }
       }
       setLoading(false);
@@ -110,9 +116,41 @@ function SpinWheelAdminCard() {
         <div className="flex items-center justify-between rounded-lg bg-secondary/30 p-3">
           <div>
             <div className="font-bold">تفعيل العجلة على الموقع</div>
-            <div className="text-xs text-muted-foreground">لما تكون شغالة، هيظهر زرار للعميل يقدر يلعب ويربح جائزة.</div>
+            <div className="text-xs text-muted-foreground">لما تكون شغالة، العميل هيقدر يلعب ويربح جائزة.</div>
           </div>
           <Switch checked={cfg.enabled} onCheckedChange={(v) => save({ ...cfg, enabled: v })} />
+        </div>
+
+        <div className="rounded-lg border border-border bg-background p-3">
+          <div className="mb-2 text-sm font-bold">وقت ظهور العجلة</div>
+          <div className="grid gap-2 md:grid-cols-2">
+            <button
+              onClick={() => save({ ...cfg, trigger: "after_order" })}
+              className={`rounded-lg border-2 p-3 text-right text-xs transition-all ${
+                (cfg.trigger ?? "after_order") === "after_order"
+                  ? "border-primary bg-primary/10 font-bold"
+                  : "border-border"
+              }`}
+            >
+              🧾 بعد تأكيد الطلب
+              <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                تظهر تلقائياً عند تأكيد الطلب وتُضاف الجائزة للطلب.
+              </div>
+            </button>
+            <button
+              onClick={() => save({ ...cfg, trigger: "floating" })}
+              className={`rounded-lg border-2 p-3 text-right text-xs transition-all ${
+                cfg.trigger === "floating"
+                  ? "border-primary bg-primary/10 font-bold"
+                  : "border-border"
+              }`}
+            >
+              ✨ زرار عائم في الموقع
+              <div className="mt-0.5 text-[10px] font-normal text-muted-foreground">
+                يظهر زرار في كل الصفحات يقدر العميل يلعب في أي وقت.
+              </div>
+            </button>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

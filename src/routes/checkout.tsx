@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { motion } from "framer-motion";
-import { MessageCircle, Truck, Store, Banknote, Smartphone, Pencil, Info } from "lucide-react";
+import { MessageCircle, Truck, Store, Banknote, Smartphone, Pencil, Info, Gift, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { saveOrder, getAddressByPhone, upsertAddress } from "@/lib/orders-api";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,8 @@ import { useQuery } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/products-api";
 import { PRODUCTS } from "@/data/products";
 import type { CartItem } from "@/store/cart";
+import { SpinWheelDialog, loadSpinConfig, canSpinNow, type SpinConfig, type ActivePrize as WheelPrize } from "@/components/site/SpinWheel";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const PRIZE_KEY = "spin_wheel_prize";
 type ActivePrize = { id: string; label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
@@ -72,8 +74,14 @@ function CheckoutPage() {
   const [coupon, setCoupon] = useState<{ code: string; type: string; value: number } | null>(null);
   const [couponBusy, setCouponBusy] = useState(false);
   const [prize, setPrize] = useState<ActivePrize | null>(null);
+  const [spinCfg, setSpinCfg] = useState<SpinConfig | null>(null);
+  const [wheelOpen, setWheelOpen] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
 
   useEffect(() => { setPrize(readActivePrize()); }, []);
+  useEffect(() => { loadSpinConfig().then(setSpinCfg); }, []);
 
   // Auto-fill coupon field from prize
   useEffect(() => {
@@ -186,19 +194,52 @@ function CheckoutPage() {
     toast.success("تم تطبيق الكوبون");
   };
 
-  const submit = async () => {
-    if (!form.name || !form.phone) { toast.error("ادخل الاسم ورقم الهاتف"); return; }
-    if (method === "delivery" && (!form.area || !form.street)) { toast.error("أكمل بيانات العنوان"); return; }
-    if (items.length === 0) { toast.error("السلة فاضية"); return; }
+  const validate = () => {
+    if (!form.name || !form.phone) { toast.error("ادخل الاسم ورقم الهاتف"); return false; }
+    if (method === "delivery" && (!form.area || !form.street)) { toast.error("أكمل بيانات العنوان"); return false; }
+    if (items.length === 0) { toast.error("السلة فاضية"); return false; }
+    return true;
+  };
 
-    // Redeem coupon (atomic) before sending
+  // Step 1: user clicks تأكيد الطلب → validate → open wheel if enabled+after_order, else confirmation
+  const handleConfirm = () => {
+    if (!validate()) return;
+    const shouldShowWheel =
+      spinCfg?.enabled &&
+      (spinCfg.trigger ?? "floating") === "after_order" &&
+      (spinCfg.prizes || []).length >= 2 &&
+      canSpinNow(spinCfg, form.phone) &&
+      !prize; // don't re-spin if a prize is already active
+    if (shouldShowWheel) {
+      setWheelOpen(true);
+    } else {
+      setConfirmOpen(true);
+    }
+  };
+
+  // Called when wheel finishes (win or skip)
+  const handleWheelFinished = () => {
+    // pick up newly-won prize
+    setPrize(readActivePrize());
+    setConfirmOpen(true);
+  };
+
+  // Step 2: final send to WhatsApp
+  const sendOrder = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+
     if (coupon) {
       const { data: r } = await (supabase as any).rpc("redeem_coupon", { _code: coupon.code });
       const row = Array.isArray(r) ? r[0] : r;
-      if (!row?.ok) { toast.error(row?.message || "الكوبون لم يعد متاحاً"); setCoupon(null); return; }
+      if (!row?.ok) {
+        toast.error(row?.message || "الكوبون لم يعد متاحاً");
+        setCoupon(null);
+        setSubmitting(false);
+        return;
+      }
     }
 
-    // Save in background
     Promise.all([
       saveOrder({
         phone: form.phone,
@@ -228,9 +269,8 @@ function CheckoutPage() {
 
     const url = `https://wa.me/${whatsapp}?text=${buildMessage()}`;
     window.open(url, "_blank");
-    toast.success("جاري فتح واتساب لإرسال طلبك");
+    setSent(true);
 
-    // Mark prize as redeemed & clear from local storage
     if (prize) {
       supabase
         .from("spin_attempts")
@@ -238,8 +278,16 @@ function CheckoutPage() {
         .eq("id", prize.id)
         .then(() => {});
       localStorage.removeItem(PRIZE_KEY);
-      setPrize(null);
     }
+    setSubmitting(false);
+  };
+
+  const finishAndClear = () => {
+    setConfirmOpen(false);
+    setSent(false);
+    setPrize(null);
+    clear();
+    navigate({ to: "/" });
   };
 
   if (items.length === 0) {
@@ -438,9 +486,9 @@ function CheckoutPage() {
                 </div>
               ) : null;
             })()}
-            <Button onClick={submit} className="h-12 w-full rounded-xl bg-[#25D366] text-base font-extrabold text-white shadow-elegant hover:bg-[#1fb957]">
+            <Button onClick={handleConfirm} className="h-12 w-full rounded-xl bg-[#25D366] text-base font-extrabold text-white shadow-elegant hover:bg-[#1fb957]">
               <MessageCircle className="ml-2 h-5 w-5" />
-              تأكيد عبر واتساب
+              تأكيد الطلب
             </Button>
             <button onClick={clear} className="w-full text-xs text-muted-foreground hover:text-destructive">مسح السلة</button>
           </div>
@@ -454,6 +502,84 @@ function CheckoutPage() {
           editing={editing}
         />
       )}
+
+      {/* Spin wheel (after-order flow) */}
+      <SpinWheelDialog
+        open={wheelOpen}
+        onOpenChange={setWheelOpen}
+        config={spinCfg}
+        phone={form.phone}
+        onFinished={handleWheelFinished}
+      />
+
+      {/* Final WhatsApp confirmation step */}
+      <Dialog open={confirmOpen} onOpenChange={(v) => { if (!v && !sent) setConfirmOpen(false); }}>
+        <DialogContent className="w-[95vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center text-xl font-black">
+              {sent ? "تم إرسال الطلب على واتساب" : "الخطوة الأخيرة"}
+            </DialogTitle>
+          </DialogHeader>
+
+          {!sent ? (
+            <div className="space-y-4">
+              <div className="rounded-xl bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+                ⚠️ الطلب لم يتم إرساله بعد. اضغط الزرار أدناه لفتح واتساب وإرسال رسالة التأكيد لإتمام الطلب.
+              </div>
+
+              {prize && (
+                <div className="rounded-xl border-2 border-dashed border-amber-400 bg-gradient-to-br from-amber-50 to-rose-50 p-3 text-sm dark:from-amber-900/20 dark:to-rose-900/20">
+                  <div className="flex items-center gap-2 font-black text-rose-600 dark:text-rose-300">
+                    <Gift className="h-4 w-4" /> تمت إضافة جائزتك للطلب
+                  </div>
+                  <div className="mt-1 font-bold">{prize.label}</div>
+                  {prize.type === "coupon" && prize.code && (
+                    <div className="mt-1 text-xs">
+                      الكود: <span className="font-mono font-black">{prize.code}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <Button
+                onClick={sendOrder}
+                disabled={submitting}
+                className="h-14 w-full rounded-xl bg-[#25D366] text-base font-extrabold text-white shadow-elegant hover:bg-[#1fb957]"
+              >
+                <MessageCircle className="ml-2 h-5 w-5" />
+                {submitting ? "جاري الإرسال..." : "افتح واتساب وأرسل الطلب"}
+              </Button>
+              <button
+                onClick={() => setConfirmOpen(false)}
+                className="w-full text-xs text-muted-foreground hover:text-destructive"
+              >
+                رجوع للمراجعة
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4 text-center">
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30">
+                <CheckCircle2 className="h-9 w-9" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                لو الواتساب مفتحش تلقائياً اضغط الزرار مرة تانية.
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  onClick={sendOrder}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  إعادة الفتح
+                </Button>
+                <Button onClick={finishAndClear} className="flex-1 bg-gradient-primary text-primary-foreground">
+                  تم
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </SiteLayout>
   );
 }
