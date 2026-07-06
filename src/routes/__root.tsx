@@ -81,8 +81,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "طيور الرشيدي — دواجن طازجة وعروض يومية" },
       { name: "twitter:description", content: "الموقع الرسمي لطيور الرشيدي. نوفر الدواجن الطازجة والمنتجات المجهزة بأعلى معايير الجودة، مع عروض متجددة، طلب أونلاين سريع، تحديث فوري للأسعار، وتوصيل موثوق لتجر" },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/jBB33Uuf82Tfs4YVcJYaJJklpfG2/social-images/social-1783371921777-Screenshot_2026-07-07_000505.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/jBB33Uuf82Tfs4YVcJYaJJklpfG2/social-images/social-1783371921777-Screenshot_2026-07-07_000505.webp" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2ddbbbd-057e-46f6-b622-cd9678ac9b3b/id-preview-9e7b093c--65cd83e1-b301-46c3-9186-c925f6de31b8.lovable.app-1778280060859.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f2ddbbbd-057e-46f6-b622-cd9678ac9b3b/id-preview-9e7b093c--65cd83e1-b301-46c3-9186-c925f6de31b8.lovable.app-1778280060859.png" },
     ],
     links: [
       {
