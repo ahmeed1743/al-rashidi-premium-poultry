@@ -79,9 +79,31 @@ function CheckoutPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [wheelInfoOpen, setWheelInfoOpen] = useState(false);
+  const [wheelInfoDismissed, setWheelInfoDismissed] = useState(false);
+
+  const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const wheelMin = spinCfg?.minOrderTotal ?? 0;
+  const wheelEligible =
+    !!spinCfg?.enabled &&
+    (spinCfg?.trigger ?? "after_order") === "after_order" &&
+    (spinCfg?.prizes || []).length >= 2 &&
+    (wheelMin <= 0 || subtotal >= wheelMin);
 
   useEffect(() => { setPrize(readActivePrize()); }, []);
   useEffect(() => { loadSpinConfig().then(setSpinCfg); }, []);
+
+  // Auto-show a one-time info popup about the wheel threshold
+  useEffect(() => {
+    if (wheelInfoDismissed) return;
+    if (!spinCfg?.enabled) return;
+    if ((spinCfg?.trigger ?? "after_order") !== "after_order") return;
+    if ((spinCfg?.minOrderTotal ?? 0) <= 0) return;
+    setWheelInfoOpen(true);
+    const t = setTimeout(() => setWheelInfoOpen(false), 10000);
+    setWheelInfoDismissed(true);
+    return () => clearTimeout(t);
+  }, [spinCfg]); // eslint-disable-line
 
   // Auto-fill coupon field from prize
   useEffect(() => {
@@ -205,10 +227,8 @@ function CheckoutPage() {
   const handleConfirm = () => {
     if (!validate()) return;
     const shouldShowWheel =
-      spinCfg?.enabled &&
-      (spinCfg.trigger ?? "floating") === "after_order" &&
-      (spinCfg.prizes || []).length >= 2 &&
-      canSpinNow(spinCfg, form.phone) &&
+      wheelEligible &&
+      canSpinNow(spinCfg!, form.phone) &&
       !prize; // don't re-spin if a prize is already active
     if (shouldShowWheel) {
       setWheelOpen(true);
