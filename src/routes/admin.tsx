@@ -66,12 +66,28 @@ const BADGES = ["", "خصم", "الأكثر مبيعاً", "جديد", "مميز
 /* ------------------------------------------------------------------ */
 /* Spin Wheel Admin                                                    */
 /* ------------------------------------------------------------------ */
-type SpinPrize = { label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
+type SpinPrize = {
+  label: string;
+  type: "coupon" | "gift" | "none";
+  code?: string;
+  note?: string;
+  weight?: number;
+  enabled?: boolean;
+  maxWins?: number;
+  color?: string;
+  icon?: string;
+};
 type SpinTrigger = "floating" | "after_order";
-type SpinConfig = { enabled: boolean; prizes: SpinPrize[]; cooldownDays?: number; trigger?: SpinTrigger };
+type SpinConfig = {
+  enabled: boolean;
+  prizes: SpinPrize[];
+  cooldownDays?: number;
+  trigger?: SpinTrigger;
+  minOrderTotal?: number;
+};
 
 function SpinWheelAdminCard() {
-  const [cfg, setCfg] = useState<SpinConfig>({ enabled: false, prizes: [], cooldownDays: 7, trigger: "after_order" });
+  const [cfg, setCfg] = useState<SpinConfig>({ enabled: false, prizes: [], cooldownDays: 7, trigger: "after_order", minOrderTotal: 1000 });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -86,6 +102,7 @@ function SpinWheelAdminCard() {
             prizes: parsed.prizes || [],
             cooldownDays: parsed.cooldownDays ?? 7,
             trigger: parsed.trigger ?? "after_order",
+            minOrderTotal: parsed.minOrderTotal ?? 1000,
           });
         } catch { /* ignore */ }
       }
@@ -103,7 +120,7 @@ function SpinWheelAdminCard() {
     if (error) toast.error(error.message);
   };
 
-  const addPrize = () => save({ ...cfg, prizes: [...cfg.prizes, { label: "جائزة", type: "none" }] });
+  const addPrize = () => save({ ...cfg, prizes: [...cfg.prizes, { label: "جائزة", type: "none", enabled: true, weight: 10 }] });
   const removePrize = (i: number) => save({ ...cfg, prizes: cfg.prizes.filter((_, idx) => idx !== i) });
   const updatePrize = (i: number, patch: Partial<SpinPrize>) =>
     save({ ...cfg, prizes: cfg.prizes.map((p, idx) => (idx === i ? { ...p, ...patch } : p)) });
@@ -153,16 +170,31 @@ function SpinWheelAdminCard() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <label className="text-xs font-bold">فترة الانتظار بين المحاولات (أيام):</label>
-          <Input
-            type="number"
-            min={0}
-            className="h-8 w-20"
-            value={cfg.cooldownDays ?? 7}
-            onChange={(e) => save({ ...cfg, cooldownDays: Number(e.target.value) || 0 })}
-          />
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold">فترة الانتظار (أيام):</label>
+            <Input
+              type="number"
+              min={0}
+              className="h-8 w-20"
+              value={cfg.cooldownDays ?? 7}
+              onChange={(e) => save({ ...cfg, cooldownDays: Number(e.target.value) || 0 })}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-bold">أقل إجمالي للطلب (ج.م):</label>
+            <Input
+              type="number"
+              min={0}
+              className="h-8 w-24"
+              value={cfg.minOrderTotal ?? 0}
+              onChange={(e) => save({ ...cfg, minOrderTotal: Number(e.target.value) || 0 })}
+            />
+          </div>
         </div>
+        <p className="text-[11px] text-muted-foreground">
+          العميل هيلف العجلة بعد التأكيد لو إجمالي طلبه ≥ هذا الرقم. حط 0 لتعطيل الشرط.
+        </p>
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -176,41 +208,104 @@ function SpinWheelAdminCard() {
               أضف على الأقل جائزتين لتظهر العجلة.
             </p>
           )}
-          {cfg.prizes.map((p, i) => (
-            <div key={i} className="grid gap-2 rounded-lg border border-border bg-background p-3 md:grid-cols-[1fr,140px,1fr,auto]">
-              <div>
-                <label className="mb-1 block text-[10px] font-bold">اسم الجائزة</label>
-                <Input value={p.label} onChange={(e) => updatePrize(i, { label: e.target.value })} placeholder="خصم 10%" />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-bold">النوع</label>
-                <select
-                  value={p.type}
-                  onChange={(e) => updatePrize(i, { type: e.target.value as SpinPrize["type"] })}
-                  className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                >
-                  <option value="none">بدون</option>
-                  <option value="coupon">كوبون</option>
-                  <option value="gift">هدية</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] font-bold">
-                  {p.type === "coupon" ? "كود الكوبون" : "ملاحظة"}
-                </label>
-                <Input
-                  value={p.type === "coupon" ? p.code || "" : p.note || ""}
-                  onChange={(e) => updatePrize(i, p.type === "coupon" ? { code: e.target.value } : { note: e.target.value })}
-                  placeholder={p.type === "coupon" ? "WELCOME10" : "تفاصيل الهدية"}
-                />
-              </div>
-              <div className="flex items-end">
-                <Button size="icon" variant="ghost" onClick={() => removePrize(i)}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            </div>
-          ))}
+          {(() => {
+            const totalWeight = cfg.prizes
+              .filter((p) => p.enabled !== false)
+              .reduce((a, b) => a + Math.max(0, b.weight ?? 1), 0);
+            return (
+              <>
+                {totalWeight > 0 && (
+                  <p className="rounded bg-secondary/40 p-2 text-[11px] text-muted-foreground">
+                    مجموع الأوزان الحالي: <span className="font-black text-primary">{totalWeight}</span>.
+                    النسبة الحقيقية = وزن الجائزة ÷ المجموع.
+                  </p>
+                )}
+                {cfg.prizes.map((p, i) => {
+                  const enabled = p.enabled !== false;
+                  const weight = Math.max(0, p.weight ?? 1);
+                  const pct = totalWeight > 0 && enabled ? Math.round((weight / totalWeight) * 100) : 0;
+                  return (
+                    <div key={i} className={`space-y-2 rounded-lg border-2 p-3 ${enabled ? "border-border bg-background" : "border-dashed border-muted bg-muted/20 opacity-60"}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Switch checked={enabled} onCheckedChange={(v) => updatePrize(i, { enabled: v })} />
+                          <span className="text-xs font-bold">{enabled ? `مفعّلة (${pct}%)` : "متوقفة"}</span>
+                        </div>
+                        <Button size="icon" variant="ghost" onClick={() => removePrize(i)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-[1fr,120px,1fr]">
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">اسم الجائزة</label>
+                          <Input value={p.label} onChange={(e) => updatePrize(i, { label: e.target.value })} placeholder="خصم 10%" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">النوع</label>
+                          <select
+                            value={p.type}
+                            onChange={(e) => updatePrize(i, { type: e.target.value as SpinPrize["type"] })}
+                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                          >
+                            <option value="none">بدون</option>
+                            <option value="coupon">كوبون</option>
+                            <option value="gift">هدية</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">
+                            {p.type === "coupon" ? "كود الكوبون" : "ملاحظة"}
+                          </label>
+                          <Input
+                            value={p.type === "coupon" ? p.code || "" : p.note || ""}
+                            onChange={(e) => updatePrize(i, p.type === "coupon" ? { code: e.target.value } : { note: e.target.value })}
+                            placeholder={p.type === "coupon" ? "WELCOME10" : "تفاصيل الهدية"}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-4">
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">الوزن (نسبة الفوز)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={weight}
+                            onChange={(e) => updatePrize(i, { weight: Number(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">حد أقصى للفوز (0 = بدون)</label>
+                          <Input
+                            type="number"
+                            min={0}
+                            value={p.maxWins ?? 0}
+                            onChange={(e) => updatePrize(i, { maxWins: Number(e.target.value) || 0 })}
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">اللون</label>
+                          <input
+                            type="color"
+                            value={p.color || "#f59e0b"}
+                            onChange={(e) => updatePrize(i, { color: e.target.value })}
+                            className="h-9 w-full cursor-pointer rounded-md border border-input bg-background"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-[10px] font-bold">أيقونة (إيموجي)</label>
+                          <Input
+                            value={p.icon || ""}
+                            onChange={(e) => updatePrize(i, { icon: e.target.value })}
+                            placeholder="🎁"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </>
+            );
+          })()}
         </div>
         {saving && <div className="text-xs text-muted-foreground">جاري الحفظ...</div>}
         <p className="text-[11px] text-muted-foreground">
