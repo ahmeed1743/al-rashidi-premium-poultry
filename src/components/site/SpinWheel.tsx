@@ -5,13 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sparkles, Gift, Copy } from "lucide-react";
 
-export type Prize = { label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
+export type Prize = {
+  label: string;
+  type: "coupon" | "gift" | "none";
+  code?: string;
+  note?: string;
+  weight?: number;      // relative probability (0 = never)
+  enabled?: boolean;    // default true when undefined
+  maxWins?: number;     // 0 or undefined = unlimited
+  color?: string;       // custom sector color
+  icon?: string;        // emoji shown on the sector
+};
 export type SpinTrigger = "floating" | "after_order";
 export type SpinConfig = {
   enabled: boolean;
   prizes: Prize[];
   cooldownDays?: number;
   trigger?: SpinTrigger;
+  minOrderTotal?: number;   // only show wheel when subtotal >= this
 };
 export type ActivePrize = Prize & { id: string; won_at: number };
 
@@ -29,11 +40,34 @@ function getSessionId() {
   return s;
 }
 
-const COLORS = [
+const DEFAULT_COLORS = [
   "#ef4444", "#f59e0b", "#10b981", "#0ea5e9",
   "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
   "#eab308", "#22c55e", "#3b82f6", "#d946ef",
 ];
+
+/** Filter prizes to only enabled + not exceeding maxWins. */
+function availablePrizes(prizes: Prize[], winCounts: Record<string, number>) {
+  return prizes
+    .map((p, idx) => ({ p, idx }))
+    .filter(({ p }) => p.enabled !== false)
+    .filter(({ p }) => !p.maxWins || (winCounts[p.label] ?? 0) < p.maxWins);
+}
+
+/** Weighted random pick returning index into the ORIGINAL prizes array. */
+function pickWeighted(prizes: Prize[], winCounts: Record<string, number>): number {
+  const avail = availablePrizes(prizes, winCounts);
+  if (!avail.length) return Math.floor(Math.random() * prizes.length);
+  const weights = avail.map(({ p }) => Math.max(0, p.weight ?? 1));
+  const total = weights.reduce((a, b) => a + b, 0);
+  if (total <= 0) return avail[Math.floor(Math.random() * avail.length)].idx;
+  let r = Math.random() * total;
+  for (let i = 0; i < avail.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return avail[i].idx;
+  }
+  return avail[avail.length - 1].idx;
+}
 
 export function canSpinNow(cfg: SpinConfig | null, phone?: string) {
   if (!cfg?.enabled || (cfg.prizes || []).length < 2) return false;
@@ -113,6 +147,23 @@ export function SpinWheelDialog({
     [config, phone, open],
   );
 
+  const [winCounts, setWinCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    if (!open) return;
+    (async () => {
+      const { data } = await supabase
+        .from("spin_attempts")
+        .select("prize_label")
+        .in("prize_label", prizes.map((p) => p.label));
+      const counts: Record<string, number> = {};
+      (data || []).forEach((r: any) => {
+        const k = r.prize_label as string;
+        counts[k] = (counts[k] ?? 0) + 1;
+      });
+      setWinCounts(counts);
+    })();
+  }, [open]);
+
   useEffect(() => {
     if (open) {
       setResult(null);
@@ -126,7 +177,7 @@ export function SpinWheelDialog({
     setResult(null);
     setSpinning(true);
     const segAngle = 360 / prizes.length;
-    const idx = Math.floor(Math.random() * prizes.length);
+    const idx = pickWeighted(prizes, winCounts);
     const target = 360 * 6 - (idx * segAngle + segAngle / 2);
     setAngle(target);
     setTimeout(async () => {
@@ -162,13 +213,13 @@ export function SpinWheelDialog({
         /* ignore */
       }
     }, 4200);
-  }, [spinning, canSpin, config, prizes, phone, onPrizeWon]);
+  }, [spinning, canSpin, config, prizes, phone, onPrizeWon, winCounts]);
 
   if (!config?.enabled || prizes.length < 2) return null;
 
   const segAngle = 360 / prizes.length;
   const gradient = prizes
-    .map((_, i) => `${COLORS[i % COLORS.length]} ${i * segAngle}deg ${(i + 1) * segAngle}deg`)
+    .map((p, i) => `${p.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length]} ${i * segAngle}deg ${(i + 1) * segAngle}deg`)
     .join(", ");
 
   const done = () => {
@@ -240,7 +291,7 @@ export function SpinWheelDialog({
                           className="block max-w-[90px] truncate text-center text-[11px] font-black leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] sm:text-[13px]"
                           style={{ transform: "rotate(180deg)" }}
                         >
-                          {p.label}
+                          {p.icon ? `${p.icon} ` : ""}{p.label}
                         </span>
                       </div>
                     </div>

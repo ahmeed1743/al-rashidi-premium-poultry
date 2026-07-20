@@ -37,6 +37,7 @@ const SIZES_4: Group[] = [
 ];
 
 const CHICKEN: CustomSchema = {
+  units: UNIT_KG_OR_COUNT,
   sizes: SIZES_4,
   cuts: [
     { id: "saleem", label: "سليم" },

@@ -79,9 +79,31 @@ function CheckoutPage() {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const [wheelInfoOpen, setWheelInfoOpen] = useState(false);
+  const [wheelInfoDismissed, setWheelInfoDismissed] = useState(false);
+
+  const subtotal = items.reduce((s, it) => s + it.price * it.quantity, 0);
+  const wheelMin = spinCfg?.minOrderTotal ?? 0;
+  const wheelEligible =
+    !!spinCfg?.enabled &&
+    (spinCfg?.trigger ?? "after_order") === "after_order" &&
+    (spinCfg?.prizes || []).length >= 2 &&
+    (wheelMin <= 0 || subtotal >= wheelMin);
 
   useEffect(() => { setPrize(readActivePrize()); }, []);
   useEffect(() => { loadSpinConfig().then(setSpinCfg); }, []);
+
+  // Auto-show a one-time info popup about the wheel threshold
+  useEffect(() => {
+    if (wheelInfoDismissed) return;
+    if (!spinCfg?.enabled) return;
+    if ((spinCfg?.trigger ?? "after_order") !== "after_order") return;
+    if ((spinCfg?.minOrderTotal ?? 0) <= 0) return;
+    setWheelInfoOpen(true);
+    const t = setTimeout(() => setWheelInfoOpen(false), 10000);
+    setWheelInfoDismissed(true);
+    return () => clearTimeout(t);
+  }, [spinCfg]); // eslint-disable-line
 
   // Auto-fill coupon field from prize
   useEffect(() => {
@@ -205,10 +227,8 @@ function CheckoutPage() {
   const handleConfirm = () => {
     if (!validate()) return;
     const shouldShowWheel =
-      spinCfg?.enabled &&
-      (spinCfg.trigger ?? "floating") === "after_order" &&
-      (spinCfg.prizes || []).length >= 2 &&
-      canSpinNow(spinCfg, form.phone) &&
+      wheelEligible &&
+      canSpinNow(spinCfg!, form.phone) &&
       !prize; // don't re-spin if a prize is already active
     if (shouldShowWheel) {
       setWheelOpen(true);
@@ -511,6 +531,33 @@ function CheckoutPage() {
         phone={form.phone}
         onFinished={handleWheelFinished}
       />
+
+      {/* One-time wheel-threshold info popup */}
+      <Dialog open={wheelInfoOpen} onOpenChange={setWheelInfoOpen}>
+        <DialogContent className="w-[95vw] max-w-md overflow-hidden border-0 bg-gradient-to-br from-amber-400 via-rose-500 to-fuchsia-600 p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl font-black text-white">
+              🎡 عجلة الحظ في انتظارك!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur">
+              <Gift className="h-9 w-9" />
+            </div>
+            <p className="text-base font-bold leading-relaxed">
+              لو إجمالي طلبك وصل <span className="rounded-lg bg-white/25 px-2 py-0.5 font-black">{wheelMin} ج.م</span> أو أكثر،
+              هتقدر تلف العجلة بعد تأكيد الطلب وتربح خصومات وجوائز فورية!
+            </p>
+            <p className="text-xs text-white/80">هيتقفل تلقائياً خلال 10 ثواني</p>
+            <Button
+              onClick={() => setWheelInfoOpen(false)}
+              className="h-11 w-full rounded-xl bg-white text-base font-black text-rose-600 shadow-lg hover:bg-white/90"
+            >
+              تمام، فهمت
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Final WhatsApp confirmation step */}
       <Dialog open={confirmOpen} onOpenChange={(v) => { if (!v && !sent) setConfirmOpen(false); }}>
