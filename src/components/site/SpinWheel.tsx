@@ -5,13 +5,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Sparkles, Gift, Copy } from "lucide-react";
 
-export type Prize = { label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
+export type Prize = {
+  label: string;
+  type: "coupon" | "gift" | "none";
+  code?: string;
+  note?: string;
+  weight?: number;      // relative probability (0 = never)
+  enabled?: boolean;    // default true when undefined
+  maxWins?: number;     // 0 or undefined = unlimited
+  color?: string;       // custom sector color
+  icon?: string;        // emoji shown on the sector
+};
 export type SpinTrigger = "floating" | "after_order";
 export type SpinConfig = {
   enabled: boolean;
   prizes: Prize[];
   cooldownDays?: number;
   trigger?: SpinTrigger;
+  minOrderTotal?: number;   // only show wheel when subtotal >= this
 };
 export type ActivePrize = Prize & { id: string; won_at: number };
 
