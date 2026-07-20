@@ -532,6 +532,33 @@ function CheckoutPage() {
         onFinished={handleWheelFinished}
       />
 
+      {/* One-time wheel-threshold info popup */}
+      <Dialog open={wheelInfoOpen} onOpenChange={setWheelInfoOpen}>
+        <DialogContent className="w-[95vw] max-w-md overflow-hidden border-0 bg-gradient-to-br from-amber-400 via-rose-500 to-fuchsia-600 p-6 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-center text-2xl font-black text-white">
+              🎡 عجلة الحظ في انتظارك!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/20 backdrop-blur">
+              <Gift className="h-9 w-9" />
+            </div>
+            <p className="text-base font-bold leading-relaxed">
+              لو إجمالي طلبك وصل <span className="rounded-lg bg-white/25 px-2 py-0.5 font-black">{wheelMin} ج.م</span> أو أكثر،
+              هتقدر تلف العجلة بعد تأكيد الطلب وتربح خصومات وجوائز فورية!
+            </p>
+            <p className="text-xs text-white/80">هيتقفل تلقائياً خلال 10 ثواني</p>
+            <Button
+              onClick={() => setWheelInfoOpen(false)}
+              className="h-11 w-full rounded-xl bg-white text-base font-black text-rose-600 shadow-lg hover:bg-white/90"
+            >
+              تمام، فهمت
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Final WhatsApp confirmation step */}
       <Dialog open={confirmOpen} onOpenChange={(v) => { if (!v && !sent) setConfirmOpen(false); }}>
         <DialogContent className="w-[95vw] max-w-md">
