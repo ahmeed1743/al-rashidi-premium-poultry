@@ -291,7 +291,7 @@ export function SpinWheelDialog({
                           className="block max-w-[90px] truncate text-center text-[11px] font-black leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] sm:text-[13px]"
                           style={{ transform: "rotate(180deg)" }}
                         >
-                          {p.label}
+                          {p.icon ? `${p.icon} ` : ""}{p.label}
                         </span>
                       </div>
                     </div>
