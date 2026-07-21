@@ -232,7 +232,10 @@ export type Database = {
       }
       spin_attempts: {
         Row: {
+          cart_total: number | null
+          cooldown_end: string | null
           created_at: string
+          device_id: string | null
           id: string
           order_phone: string | null
           prize_code: string | null
@@ -243,7 +246,10 @@ export type Database = {
           session_id: string | null
         }
         Insert: {
+          cart_total?: number | null
+          cooldown_end?: string | null
           created_at?: string
+          device_id?: string | null
           id?: string
           order_phone?: string | null
           prize_code?: string | null
@@ -254,7 +260,10 @@ export type Database = {
           session_id?: string | null
         }
         Update: {
+          cart_total?: number | null
+          cooldown_end?: string | null
           created_at?: string
+          device_id?: string | null
           id?: string
           order_phone?: string | null
           prize_code?: string | null
