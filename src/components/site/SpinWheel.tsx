@@ -196,6 +196,7 @@ export function SpinWheelDialog({
   );
 
   const [winCounts, setWinCounts] = useState<Record<string, number>>({});
+  const [canSpinDB, setCanSpinDB] = useState<boolean>(true);
   useEffect(() => {
     if (!open) return;
     (async () => {
@@ -209,6 +210,9 @@ export function SpinWheelDialog({
         counts[k] = (counts[k] ?? 0) + 1;
       });
       setWinCounts(counts);
+      // DB-backed cooldown check (device + phone)
+      const ok = await canSpinNowAsync(config, phone);
+      setCanSpinDB(ok);
     })();
   }, [open]);
 
@@ -221,7 +225,7 @@ export function SpinWheelDialog({
   }, [open]);
 
   const spin = useCallback(() => {
-    if (spinning || !canSpin || !config) return;
+    if (spinning || !canSpin || !canSpinDB || !config) return;
     setResult(null);
     setSpinning(true);
     const segAngle = 360 / prizes.length;
@@ -234,14 +238,17 @@ export function SpinWheelDialog({
       setResult(prize);
       localStorage.setItem(lastKey(phone), String(Date.now()));
       try {
+        const cooldownMs = (config.cooldownDays ?? 1) * 24 * 60 * 60 * 1000;
         const { data } = await supabase
           .from("spin_attempts")
           .insert({
             session_id: getSessionId(),
+            device_id: getDeviceId(),
             prize_label: prize.label,
             prize_type: prize.type,
             prize_code: prize.code || null,
             order_phone: phone || null,
+            cooldown_end: new Date(Date.now() + cooldownMs).toISOString(),
           } as any)
           .select("id")
           .maybeSingle();
@@ -261,7 +268,7 @@ export function SpinWheelDialog({
         /* ignore */
       }
     }, 4200);
-  }, [spinning, canSpin, config, prizes, phone, onPrizeWon, winCounts]);
+  }, [spinning, canSpin, canSpinDB, config, prizes, phone, onPrizeWon, winCounts]);
 
   if (!config?.enabled || prizes.length < 2) return null;
 
