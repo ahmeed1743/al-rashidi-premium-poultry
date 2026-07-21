@@ -112,6 +112,20 @@ function CheckoutPage() {
     }
   }, [prize]);
 
+  // If the cart total drops below the wheel threshold, remove the active prize
+  useEffect(() => {
+    if (!prize) return;
+    if (wheelMin <= 0) return;
+    if (subtotal >= wheelMin) return;
+    localStorage.removeItem(PRIZE_KEY);
+    setPrize(null);
+    if (prize.type === "coupon" && prize.code && couponCode === prize.code) {
+      setCouponCode("");
+      setCoupon(null);
+    }
+    toast.info("تم إلغاء جائزة العجلة لأن إجمالي الطلب أقل من الحد المطلوب");
+  }, [subtotal, wheelMin, prize]); // eslint-disable-line
+
   const timeSlot =
     timeMode === "asap"
       ? ASAP_SLOT
