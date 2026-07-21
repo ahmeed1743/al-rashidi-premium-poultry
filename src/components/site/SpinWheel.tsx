@@ -273,13 +273,27 @@ export function SpinWheelDialog({
   if (!config?.enabled || prizes.length < 2) return null;
 
   const segAngle = 360 / prizes.length;
-  const gradient = prizes
-    .map((p, i) => `${p.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length]} ${i * segAngle}deg ${(i + 1) * segAngle}deg`)
-    .join(", ");
 
   const done = () => {
     onOpenChange(false);
     onFinished?.();
+  };
+
+  // Build SVG sectors
+  const SIZE = 300;
+  const R = SIZE / 2;
+  const cx = R;
+  const cy = R;
+  const toRad = (deg: number) => (deg - 90) * (Math.PI / 180); // start at top
+  const sectorPath = (i: number) => {
+    const a0 = i * segAngle;
+    const a1 = (i + 1) * segAngle;
+    const x0 = cx + R * Math.cos(toRad(a0));
+    const y0 = cy + R * Math.sin(toRad(a0));
+    const x1 = cx + R * Math.cos(toRad(a1));
+    const y1 = cy + R * Math.sin(toRad(a1));
+    const large = segAngle > 180 ? 1 : 0;
+    return `M ${cx} ${cy} L ${x0} ${y0} A ${R} ${R} 0 ${large} 1 ${x1} ${y1} Z`;
   };
 
   return (
@@ -317,43 +331,51 @@ export function SpinWheelDialog({
               <div
                 className="relative h-full w-full overflow-hidden rounded-full"
                 style={{
-                  background: `conic-gradient(${gradient})`,
                   transform: `rotate(${angle}deg)`,
                   transition: spinning
                     ? "transform 4s cubic-bezier(0.17, 0.67, 0.16, 0.99)"
                     : "none",
                 }}
               >
-                {/* dashed separators */}
-                {prizes.map((_, i) => (
-                  <div
-                    key={`sep-${i}`}
-                    className="absolute left-1/2 top-1/2 h-1/2 w-px origin-bottom bg-white/40"
-                    style={{ transform: `translateX(-50%) rotate(${i * segAngle}deg)` }}
-                  />
-                ))}
-                {/* labels */}
-                {prizes.map((p, i) => {
-                  const rot = i * segAngle + segAngle / 2;
-                  return (
-                    <div
-                      key={i}
-                      className="absolute left-1/2 top-1/2 h-1/2 origin-bottom"
-                      style={{ transform: `translateX(-50%) rotate(${rot}deg)` }}
-                    >
-                      <div className="flex h-full flex-col items-center justify-start pt-3 sm:pt-4">
-                        <span
-                          className="block max-w-[90px] truncate text-center text-[11px] font-black leading-tight text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)] sm:text-[13px]"
-                          style={{ transform: "rotate(180deg)" }}
-                        >
-                          {p.icon ? `${p.icon} ` : ""}{p.label}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-                {/* subtle inner shading */}
-                <div className="pointer-events-none absolute inset-0 rounded-full bg-[radial-gradient(circle_at_center,transparent_55%,rgba(0,0,0,0.35))]" />
+                <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="h-full w-full">
+                  {prizes.map((p, i) => {
+                    const color = p.color || DEFAULT_COLORS[i % DEFAULT_COLORS.length];
+                    // Label placement: mid-angle, at ~65% radius, tangent to arc.
+                    const midDeg = i * segAngle + segAngle / 2;
+                    const rLabel = R * 0.62;
+                    const lx = cx + rLabel * Math.cos(toRad(midDeg));
+                    const ly = cy + rLabel * Math.sin(toRad(midDeg));
+                    // Rotate text so its baseline points outward (radial reading)
+                    const textRot = midDeg; // 0 at top
+                    const label = `${p.icon ? p.icon + " " : ""}${p.label}`;
+                    const fontSize = prizes.length > 8 ? 10 : prizes.length > 6 ? 12 : 14;
+                    return (
+                      <g key={i}>
+                        <path d={sectorPath(i)} fill={color} stroke="rgba(255,255,255,0.55)" strokeWidth={1.5} />
+                        <g transform={`translate(${lx} ${ly}) rotate(${textRot})`}>
+                          <text
+                            textAnchor="middle"
+                            dominantBaseline="middle"
+                            fill="#fff"
+                            fontSize={fontSize}
+                            fontWeight={900}
+                            style={{ paintOrder: "stroke", stroke: "rgba(0,0,0,0.85)", strokeWidth: 3, strokeLinejoin: "round" } as any}
+                          >
+                            {label.length > 14 ? label.slice(0, 13) + "…" : label}
+                          </text>
+                        </g>
+                      </g>
+                    );
+                  })}
+                  {/* inner shading */}
+                  <circle cx={cx} cy={cy} r={R} fill="url(#innerShade)" pointerEvents="none" />
+                  <defs>
+                    <radialGradient id="innerShade">
+                      <stop offset="55%" stopColor="rgba(0,0,0,0)" />
+                      <stop offset="100%" stopColor="rgba(0,0,0,0.35)" />
+                    </radialGradient>
+                  </defs>
+                </svg>
               </div>
             </div>
           </div>
@@ -403,7 +425,7 @@ export function SpinWheelDialog({
           </div>
         ) : (
           <div className="text-center">
-            {canSpin ? (
+            {canSpin && canSpinDB ? (
               <Button
                 onClick={spin}
                 disabled={spinning}
@@ -414,7 +436,7 @@ export function SpinWheelDialog({
             ) : (
               <div className="space-y-2">
                 <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-xs text-white/70 sm:text-sm">
-                  🕐 لعبت مؤخراً — رجّع تاني بعد فترة
+                  🕐 لعبت مؤخراً من هذا الجهاز أو الرقم — رجّع تاني بعد فترة
                 </div>
                 <Button onClick={done} variant="secondary" className="w-full">
                   تخطي
