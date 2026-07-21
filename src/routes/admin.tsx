@@ -1551,6 +1551,25 @@ function SpinAttemptsTab() {
 
   useEffect(() => { load(); }, []);
 
+  const deleteOne = async (id: string) => {
+    if (!confirm("حذف هذه المحاولة؟")) return;
+    const { error } = await supabase.from("spin_attempts" as any).delete().eq("id", id);
+    if (error) { toast.error("فشل الحذف"); return; }
+    setRows((prev) => prev.filter((r) => r.id !== id));
+    toast.success("تم الحذف");
+  };
+
+  const deleteAll = async () => {
+    if (!confirm("مسح كل سجل محاولات العجلة؟ لا يمكن التراجع.")) return;
+    const { error } = await supabase
+      .from("spin_attempts" as any)
+      .delete()
+      .not("id", "is", null);
+    if (error) { toast.error("فشل المسح"); return; }
+    setRows([]);
+    toast.success("تم مسح السجل");
+  };
+
   const stats = useMemo(() => {
     const total = rows.length;
     const wins = rows.filter((r) => r.prize_type !== "none").length;
@@ -1565,9 +1584,14 @@ function SpinAttemptsTab() {
     <div className="mt-4 space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-black">🎡 سجل محاولات عجلة الحظ</h2>
-        <Button variant="outline" size="sm" onClick={load}>
-          <RefreshCw className="ml-1 h-4 w-4" /> تحديث
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={load}>
+            <RefreshCw className="ml-1 h-4 w-4" /> تحديث
+          </Button>
+          <Button variant="destructive" size="sm" onClick={deleteAll} disabled={rows.length === 0}>
+            مسح الكل
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1594,6 +1618,7 @@ function SpinAttemptsTab() {
                   <th className="px-2 py-2">الحالة</th>
                   <th className="px-2 py-2">هاتف العميل</th>
                   <th className="px-2 py-2">تاريخ الاستلام</th>
+                  <th className="px-2 py-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -1616,6 +1641,11 @@ function SpinAttemptsTab() {
                     </td>
                     <td className="px-2 py-2 text-xs">{r.order_phone || "—"}</td>
                     <td className="px-2 py-2 text-xs">{fmt(r.redeemed_at)}</td>
+                    <td className="px-2 py-2">
+                      <Button variant="ghost" size="sm" onClick={() => deleteOne(r.id)}>
+                        حذف
+                      </Button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
