@@ -29,6 +29,7 @@ export type ActivePrize = Prize & { id: string; won_at: number };
 const LS_KEY_BASE = "spin_wheel_last_spin";
 const PRIZE_KEY = "spin_wheel_prize";
 const SESSION_KEY = "spin_wheel_session";
+const DEVICE_KEY = "spin_wheel_device_id";
 const lastKey = (phone?: string) => (phone ? `${LS_KEY_BASE}:${phone}` : LS_KEY_BASE);
 
 function getSessionId() {
@@ -38,6 +39,53 @@ function getSessionId() {
     localStorage.setItem(SESSION_KEY, s);
   }
   return s;
+}
+
+/** Stable-ish device fingerprint. Not cryptographic — deters casual replay. */
+export function getDeviceId(): string {
+  let d = localStorage.getItem(DEVICE_KEY);
+  if (d) return d;
+  try {
+    const parts = [
+      navigator.userAgent,
+      navigator.language,
+      String(screen.width) + "x" + String(screen.height),
+      String(screen.colorDepth),
+      Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+      String(navigator.hardwareConcurrency || ""),
+    ].join("|");
+    let h = 0;
+    for (let i = 0; i < parts.length; i++) h = (h * 31 + parts.charCodeAt(i)) | 0;
+    const rnd = crypto.randomUUID?.().slice(0, 8) || Math.random().toString(36).slice(2, 10);
+    d = `d_${Math.abs(h).toString(36)}_${rnd}`;
+  } catch {
+    d = `d_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  }
+  localStorage.setItem(DEVICE_KEY, d);
+  return d;
+}
+
+/** Async cooldown check against DB by device_id AND phone. Falls back to localStorage. */
+export async function canSpinNowAsync(cfg: SpinConfig | null, phone?: string): Promise<boolean> {
+  if (!cfg?.enabled || (cfg.prizes || []).length < 2) return false;
+  const cooldown = (cfg.cooldownDays ?? 1) * 24 * 60 * 60 * 1000;
+  const cutoff = new Date(Date.now() - cooldown).toISOString();
+  const deviceId = getDeviceId();
+  try {
+    const orFilter = phone
+      ? `device_id.eq.${deviceId},order_phone.eq.${phone}`
+      : `device_id.eq.${deviceId}`;
+    const { data, error } = await supabase
+      .from("spin_attempts" as any)
+      .select("id")
+      .or(orFilter)
+      .gte("created_at", cutoff)
+      .limit(1);
+    if (error) return canSpinNow(cfg, phone);
+    return (data?.length ?? 0) === 0;
+  } catch {
+    return canSpinNow(cfg, phone);
+  }
 }
 
 const DEFAULT_COLORS = [
