@@ -150,9 +150,18 @@ const DABABEES: CustomSchema = {
   ],
 };
 
+// بانية — نوع التقطيع: شرايح أو فصوص
+const PANEE: CustomSchema = {
+  types: [
+    { id: "sharayeh", label: "شرايح", info: "بانية مقطعة شرايح رفيعة" },
+    { id: "fosos", label: "فصوص", info: "بانية مقطعة فصوص (مكعبات)" },
+  ],
+};
+
 export const PRESETS: Record<string, CustomSchema> = {
   chicken: CHICKEN,
   rabbit: RABBIT,
+  panee: PANEE,
   "thigh-bone": THIGH_BONE,
   "thigh-duck": THIGH_DUCK,
   fakhayed: FAKHAYED,

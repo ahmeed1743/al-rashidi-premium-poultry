@@ -49,12 +49,13 @@ const CAT_LABELS: Record<string, string> = {
   offers: "🔥 عروض", chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
   marinated: "متبلات", parts: "أجزاء", other: "أخرى",
 };
-const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
+const PRESETS = ["none", "chicken", "rabbit", "duck", "panee", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
 const PRESET_LABELS: Record<string, string> = {
   none: "بدون تخصيص",
   chicken: "فراخ (تقطيع كامل)",
   rabbit: "أرانب (سليم/مقطع)",
   duck: "بط (مع نصف بطة)",
+  panee: "بانية (شرايح / فصوص)",
   "thigh-bone": "وراك بالعظم",
   "thigh-duck": "وراك بط (وحدة فقط)",
   fakhayed: "فخايد (وحدة فقط)",
@@ -358,6 +359,7 @@ function AdminPage() {
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="overview">📊 نظرة عامة</TabsTrigger>
             <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
+            <TabsTrigger value="menu">📷 المنيو</TabsTrigger>
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
@@ -366,6 +368,7 @@ function AdminPage() {
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
+          <TabsContent value="menu"><MenuScanTab /></TabsContent>
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
@@ -761,6 +764,7 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
               <Toggle label="إخفاء التقطيع" v={!!r.customization_config?.hideCuts} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideCuts: v })} />
               <Toggle label="إخفاء السلخ" v={!!r.customization_config?.hideSalkh} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideSalkh: v })} />
               <Toggle label="إخفاء الخلي" v={!!r.customization_config?.hideKhaly} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideKhaly: v })} />
+              <Toggle label="إخفاء اختيار النوع" v={!!r.customization_config?.hideTypes} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideTypes: v })} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Field label="إجبار الوحدة (لو فيه اختيار كيلو/عدد)">
@@ -817,6 +821,12 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
                 hint="سطر لكل تقطيع. الصيغة: الاسم | شرح اختياري"
                 value={r.customization_config?.customCuts || []}
                 onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customCuts: v })}
+              />
+              <ListEditor
+                label="أنواع داخل المنتج (زي: شرايح / فصوص)"
+                hint="سطر لكل نوع. الصيغة: الاسم | شرح اختياري — تستبدل الافتراضي"
+                value={r.customization_config?.customTypes || []}
+                onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customTypes: v })}
               />
             </div>
           </div>
@@ -1653,6 +1663,160 @@ function SpinAttemptsTab() {
           </div>
         )}
       </Card>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Menu image scan → extract prices                                    */
+/* ------------------------------------------------------------------ */
+const norm = (s: string) =>
+  (s || "")
+    .replace(/[إأآا]/g, "ا").replace(/ى/g, "ي").replace(/ة/g, "ه")
+    .replace(/[ًٌٍَُِّْ]/g, "")
+    .replace(/[^\u0600-\u06FF0-9a-zA-Z ]/g, " ")
+    .replace(/\s+/g, " ").trim();
+
+function score(a: string, b: string) {
+  const A = norm(a), B = norm(b);
+  if (!A || !B) return 0;
+  if (A === B) return 1;
+  if (A.includes(B) || B.includes(A)) return 0.85;
+  const wa = new Set(A.split(" ")), wb = B.split(" ");
+  const hit = wb.filter((w) => w.length > 1 && wa.has(w)).length;
+  return hit / Math.max(wa.size, wb.length);
+}
+
+type ScanRow = { name: string; price: number; productId: string; apply: boolean };
+
+function MenuScanTab() {
+  const [products, setProducts] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [preview, setPreview] = useState("");
+  const [rows, setRows] = useState<ScanRow[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("products").select("id,name,price").order("name");
+      setProducts(data || []);
+    })();
+  }, []);
+
+  const onFile = async (file: File) => {
+    setBusy(true);
+    setRows([]);
+    try {
+      const dataUrl: string = await new Promise((res, rej) => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result));
+        fr.onerror = rej;
+        fr.readAsDataURL(file);
+      });
+      setPreview(dataUrl);
+      const { extractMenu } = await import("@/lib/menu-ocr.functions");
+      const out = await extractMenu({ data: { imageDataUrl: dataUrl } });
+      if (!out.items.length) { toast.error("مش لاقي أصناف في الصورة، جرّب صورة أوضح"); return; }
+      setRows(out.items.map((it) => {
+        let best = ""; let bs = 0;
+        for (const p of products) {
+          const s = score(p.name, it.name);
+          if (s > bs) { bs = s; best = p.id; }
+        }
+        const matched = bs >= 0.5 ? best : "";
+        return { name: it.name, price: it.price, productId: matched, apply: !!matched };
+      }));
+      toast.success(`تم استخراج ${out.items.length} صنف`);
+    } catch (e: any) {
+      toast.error(e?.message || "فشل قراءة المنيو");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const setRow = (i: number, patch: Partial<ScanRow>) =>
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+
+  const saveAll = async () => {
+    const list = rows.filter((r) => r.apply && r.productId && r.price > 0);
+    if (!list.length) { toast.error("مفيش صفوف متحددة للحفظ"); return; }
+    setSaving(true);
+    let ok = 0;
+    for (const r of list) {
+      const { error } = await supabase.from("products").update({ price: r.price }).eq("id", r.productId);
+      if (!error) ok++;
+    }
+    setSaving(false);
+    toast.success(`تم تحديث ${ok} منتج`);
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card title="📷 رفع صورة المنيو واستخراج الأسعار">
+        <p className="mb-3 text-xs text-muted-foreground">
+          ارفع صورة المنيو اليومية، هيتم استخراج الأصناف والأسعار تلقائياً ومطابقتها بالمنتجات الحالية — راجعها قبل الحفظ.
+        </p>
+        <div className="flex items-center gap-3">
+          <label className="inline-flex h-10 cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 text-sm font-bold hover:bg-secondary">
+            <Upload className="h-4 w-4" />
+            {busy ? "جاري القراءة..." : "رفع صورة المنيو"}
+            <input type="file" accept="image/*" className="hidden" disabled={busy}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.currentTarget.value = ""; }} />
+          </label>
+          {preview && <img src={preview} alt="المنيو" className="h-16 w-16 rounded-lg border border-border object-cover" />}
+        </div>
+      </Card>
+
+      {rows.length > 0 && (
+        <Card title={`🧾 مراجعة الأصناف (${rows.length})`}>
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th className="p-2">تطبيق</th>
+                  <th className="p-2">الصنف في الصورة</th>
+                  <th className="p-2">السعر</th>
+                  <th className="p-2">المنتج المطابق</th>
+                  <th className="p-2">السعر الحالي</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((r, i) => {
+                  const p = products.find((x) => x.id === r.productId);
+                  return (
+                    <tr key={i} className="border-t border-border">
+                      <td className="p-2">
+                        <Switch checked={r.apply} onCheckedChange={(v) => setRow(i, { apply: v })} />
+                      </td>
+                      <td className="p-2 font-bold">{r.name}</td>
+                      <td className="p-2 w-28">
+                        <Input type="number" step="0.01" value={r.price}
+                          onChange={(e) => setRow(i, { price: parseFloat(e.target.value) || 0 })} />
+                      </td>
+                      <td className="p-2">
+                        <select
+                          value={r.productId}
+                          onChange={(e) => setRow(i, { productId: e.target.value, apply: !!e.target.value })}
+                          className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                        >
+                          <option value="">— بدون مطابقة —</option>
+                          {products.map((p2) => <option key={p2.id} value={p2.id}>{p2.name}</option>)}
+                        </select>
+                      </td>
+                      <td className="p-2 text-muted-foreground">{p ? `${Number(p.price)} ج` : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex justify-end">
+            <Button onClick={saveAll} disabled={saving} className="bg-gradient-primary text-primary-foreground">
+              <Save className="ml-1 h-4 w-4" />{saving ? "..." : "حفظ الأسعار المحددة"}
+            </Button>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }

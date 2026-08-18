@@ -16,6 +16,10 @@ export type ProductConfig = {
   hideSalkh?: boolean;
   hideKhaly?: boolean;
   hideUnit?: boolean;
+  /** إخفاء اختيار النوع (زي شرايح/فصوص في البانية) */
+  hideTypes?: boolean;
+  /** أنواع مخصصة من الأدمن — تبدل الافتراضية لو موجودة */
+  customTypes?: { id: string; label: string; info?: string }[];
   forceUnit?: "kg" | "count";
   /** خطوة الكمية: 0.5 / 1 / 1.5 / 2 ... — تتجاوز الافتراضي */
   qtyStep?: number;
@@ -112,7 +116,7 @@ export const PRODUCTS: Product[] = [
   { id: "breast-bone", name: "صدور بالعظم", description: "صدور بالعظم", price: 230, image: whiteImg, section: "parts", customization: "breast-bone", note: "الطلب بالعدد فقط — وزن الصدر حوالي 600 إلى 800 جرام" },
   { id: "breast-bone-baladi", name: "صدور بالعظم بلدي", description: "صدور بلدي بالعظم", price: 289, image: baladiImg, section: "parts", customization: "breast-bone", note: "الطلب بالعدد فقط — وزن الصدر حوالي 600 إلى 800 جرام" },
   { id: "shish", name: "شيش", description: "شيش طازج", price: 252, image: whiteImg, section: "parts", customization: "none" },
-  { id: "panee", name: "بانية", description: "بانية فراخ", price: 259, image: whiteImg, section: "parts", customization: "none" },
+  { id: "panee", name: "بانية", description: "بانية فراخ", price: 259, image: whiteImg, section: "parts", customization: "panee" },
   { id: "thigh-bone", name: "وراك بالعظم", description: "وراك بالعظم", price: 107, image: whiteImg, section: "parts", customization: "thigh-bone" },
   { id: "thigh-bone-baladi", name: "وراك بالعظم بلدي", description: "وراك بلدي بالعظم", price: 130, image: baladiImg, section: "parts", customization: "thigh-bone" },
   { id: "dababees", name: "دبابيس", description: "دبابيس فراخ", price: 195, image: whiteImg, section: "parts", customization: "dababees" },

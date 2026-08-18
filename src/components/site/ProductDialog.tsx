@@ -175,7 +175,11 @@ export function ProductDialog({
     if (cfg.customSizes && cfg.customSizes.length) {
       sizes = cfg.customSizes.map((s) => ({ id: s.id || s.label, label: s.label, info: s.info }));
     }
-    return { ...base, units, cuts, sizes };
+    let types = cfg.hideTypes ? undefined : base.types;
+    if (!cfg.hideTypes && cfg.customTypes && cfg.customTypes.length) {
+      types = cfg.customTypes.map((t) => ({ id: t.id || t.label, label: t.label, info: t.info }));
+    }
+    return { ...base, units, cuts, sizes, types };
   }, [product.customization, product.config]);
 
   const [unitId, setUnitId] = useState("");
