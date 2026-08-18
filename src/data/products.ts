@@ -16,6 +16,10 @@ export type ProductConfig = {
   hideSalkh?: boolean;
   hideKhaly?: boolean;
   hideUnit?: boolean;
+  /** إخفاء اختيار النوع (زي شرايح/فصوص في البانية) */
+  hideTypes?: boolean;
+  /** أنواع مخصصة من الأدمن — تبدل الافتراضية لو موجودة */
+  customTypes?: { id: string; label: string; info?: string }[];
   forceUnit?: "kg" | "count";
   /** خطوة الكمية: 0.5 / 1 / 1.5 / 2 ... — تتجاوز الافتراضي */
   qtyStep?: number;
