@@ -49,12 +49,13 @@ const CAT_LABELS: Record<string, string> = {
   offers: "🔥 عروض", chicken: "فراخ", duck: "بط", turkey: "رومي", pigeon: "حمام/سمان",
   marinated: "متبلات", parts: "أجزاء", other: "أخرى",
 };
-const PRESETS = ["none", "chicken", "rabbit", "duck", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
+const PRESETS = ["none", "chicken", "rabbit", "duck", "panee", "thigh-bone", "thigh-duck", "fakhayed", "breast-bone", "dababees"];
 const PRESET_LABELS: Record<string, string> = {
   none: "بدون تخصيص",
   chicken: "فراخ (تقطيع كامل)",
   rabbit: "أرانب (سليم/مقطع)",
   duck: "بط (مع نصف بطة)",
+  panee: "بانية (شرايح / فصوص)",
   "thigh-bone": "وراك بالعظم",
   "thigh-duck": "وراك بط (وحدة فقط)",
   fakhayed: "فخايد (وحدة فقط)",
@@ -358,6 +359,7 @@ function AdminPage() {
           <TabsList className="flex flex-wrap">
             <TabsTrigger value="overview">📊 نظرة عامة</TabsTrigger>
             <TabsTrigger value="products">🛒 المنتجات</TabsTrigger>
+            <TabsTrigger value="menu">📷 المنيو</TabsTrigger>
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
@@ -366,6 +368,7 @@ function AdminPage() {
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
+          <TabsContent value="menu"><MenuScanTab /></TabsContent>
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
@@ -761,6 +764,7 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
               <Toggle label="إخفاء التقطيع" v={!!r.customization_config?.hideCuts} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideCuts: v })} />
               <Toggle label="إخفاء السلخ" v={!!r.customization_config?.hideSalkh} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideSalkh: v })} />
               <Toggle label="إخفاء الخلي" v={!!r.customization_config?.hideKhaly} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideKhaly: v })} />
+              <Toggle label="إخفاء اختيار النوع" v={!!r.customization_config?.hideTypes} on={(v) => set("customization_config", { ...(r.customization_config || {}), hideTypes: v })} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
               <Field label="إجبار الوحدة (لو فيه اختيار كيلو/عدد)">
@@ -817,6 +821,12 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
                 hint="سطر لكل تقطيع. الصيغة: الاسم | شرح اختياري"
                 value={r.customization_config?.customCuts || []}
                 onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customCuts: v })}
+              />
+              <ListEditor
+                label="أنواع داخل المنتج (زي: شرايح / فصوص)"
+                hint="سطر لكل نوع. الصيغة: الاسم | شرح اختياري — تستبدل الافتراضي"
+                value={r.customization_config?.customTypes || []}
+                onChange={(v) => set("customization_config", { ...(r.customization_config || {}), customTypes: v })}
               />
             </div>
           </div>
