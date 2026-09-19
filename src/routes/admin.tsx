@@ -1273,7 +1273,7 @@ function Toggle({ label, v, on }: { label: string; v: boolean; on: (b: boolean) 
   );
 }
 
-function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: number; sub?: string; pulse?: boolean }) {
+function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string; pulse?: boolean }) {
   return (
     <div className="rounded-2xl bg-gradient-card p-5 shadow-card">
       <div className="mb-2 flex items-center gap-2 text-muted-foreground">
@@ -1283,6 +1283,12 @@ function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label
       <div className="text-3xl font-black">{value}</div>
       {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
     </div>
+  );
+}
+function MoneyStat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: number; sub?: string; pulse?: boolean }) {
+  return (
+    <Stat icon={icon} label={label} sub={sub} pulse={pulse}
+      value={<span dir="ltr">{value.toLocaleString("ar-EG", { maximumFractionDigits: 0 })} <span className="text-sm font-semibold text-muted-foreground">ج.م</span></span>} />
   );
 }
 function Card({ title, icon, className = "", children }: { title: string; icon?: React.ReactNode; className?: string; children: React.ReactNode }) {
