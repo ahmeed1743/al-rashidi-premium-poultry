@@ -401,33 +401,38 @@ function Dashboard() {
       const startWeek = new Date(now); startWeek.setDate(startWeek.getDate() - 6); startWeek.setHours(0, 0, 0, 0);
       const live5 = new Date(now.getTime() - 5 * 60 * 1000);
 
-      const [visitsT, visitsW, visitsLive, ordersT, ordersAll, recent, productsCnt, offersCnt] = await Promise.all([
+      const [visitsT, visitsW, visitsLive, ordersT, ordersAll, ordersWeekFull, recent, productsCnt, offersCnt] = await Promise.all([
         supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
-        supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
-        supabase.from("orders").select("id", { count: "exact", head: true }),
+        supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("total", { count: "exact", head: true }),
+        supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("products").select("id", { count: "exact", head: true }).not("old_price", "is", null),
       ]);
 
-      const days: { day: string; count: number }[] = [];
+      const days: { day: string; count: number; sales: number }[] = [];
       const visitDays: { day: string; count: number }[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now); d.setDate(d.getDate() - i);
         const k = `${d.getDate()}/${d.getMonth() + 1}`;
-        days.push({ day: k, count: 0 });
+        days.push({ day: k, count: 0, sales: 0 });
         visitDays.push({ day: k, count: 0 });
       }
-      const { data: ordersWeek } = await supabase
-        .from("orders").select("created_at").gte("created_at", startWeek.toISOString());
-      (ordersWeek || []).forEach((o: any) => {
+      let salesWeek = 0;
+      let salesTotal = 0;
+      (ordersWeekFull.data || []).forEach((o: any) => {
+        const t = Number(o.total) || 0;
+        salesWeek += t;
         const d = new Date(o.created_at);
         const k = `${d.getDate()}/${d.getMonth() + 1}`;
         const slot = days.find((x) => x.day === k);
-        if (slot) slot.count++;
+        if (slot) { slot.count++; slot.sales += t; }
       });
+      (ordersAll.data || []).forEach((o: any) => { salesTotal += Number(o.total) || 0; });
+      const salesToday = (ordersT.data || []).reduce((s: number, o: any) => s + (Number(o.total) || 0), 0);
       (visitsW.data || []).forEach((v: any) => {
         const d = new Date(v.created_at);
         const k = `${d.getDate()}/${d.getMonth() + 1}`;
