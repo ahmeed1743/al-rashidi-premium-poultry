@@ -37,9 +37,12 @@ type Stats = {
   visitsLive: number; // last 5 min
   ordersToday: number;
   ordersTotal: number;
+  salesToday: number;
+  salesWeek: number;
+  salesTotal: number;
   productsCount: number;
   offersCount: number;
-  dailyOrders: { day: string; count: number }[];
+  dailyOrders: { day: string; count: number; sales: number }[];
   dailyVisits: { day: string; count: number }[];
   recentOrders: any[];
 };
