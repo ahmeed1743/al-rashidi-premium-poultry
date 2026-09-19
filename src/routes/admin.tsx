@@ -406,7 +406,7 @@ function Dashboard() {
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
         supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
-        supabase.from("orders").select("total", { count: "exact", head: true }),
+        supabase.from("orders").select("total"),
         supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
         supabase.from("products").select("id", { count: "exact", head: true }),
