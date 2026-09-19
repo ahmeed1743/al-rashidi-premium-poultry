@@ -37,9 +37,12 @@ type Stats = {
   visitsLive: number; // last 5 min
   ordersToday: number;
   ordersTotal: number;
+  salesToday: number;
+  salesWeek: number;
+  salesTotal: number;
   productsCount: number;
   offersCount: number;
-  dailyOrders: { day: string; count: number }[];
+  dailyOrders: { day: string; count: number; sales: number }[];
   dailyVisits: { day: string; count: number }[];
   recentOrders: any[];
 };
@@ -398,33 +401,38 @@ function Dashboard() {
       const startWeek = new Date(now); startWeek.setDate(startWeek.getDate() - 6); startWeek.setHours(0, 0, 0, 0);
       const live5 = new Date(now.getTime() - 5 * 60 * 1000);
 
-      const [visitsT, visitsW, visitsLive, ordersT, ordersAll, recent, productsCnt, offersCnt] = await Promise.all([
+      const [visitsT, visitsW, visitsLive, ordersT, ordersAll, ordersWeekFull, recent, productsCnt, offersCnt] = await Promise.all([
         supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
-        supabase.from("orders").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
-        supabase.from("orders").select("id", { count: "exact", head: true }),
+        supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("total", { count: "exact", head: true }),
+        supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("products").select("id", { count: "exact", head: true }).not("old_price", "is", null),
       ]);
 
-      const days: { day: string; count: number }[] = [];
+      const days: { day: string; count: number; sales: number }[] = [];
       const visitDays: { day: string; count: number }[] = [];
       for (let i = 6; i >= 0; i--) {
         const d = new Date(now); d.setDate(d.getDate() - i);
         const k = `${d.getDate()}/${d.getMonth() + 1}`;
-        days.push({ day: k, count: 0 });
+        days.push({ day: k, count: 0, sales: 0 });
         visitDays.push({ day: k, count: 0 });
       }
-      const { data: ordersWeek } = await supabase
-        .from("orders").select("created_at").gte("created_at", startWeek.toISOString());
-      (ordersWeek || []).forEach((o: any) => {
+      let salesWeek = 0;
+      let salesTotal = 0;
+      (ordersWeekFull.data || []).forEach((o: any) => {
+        const t = Number(o.total) || 0;
+        salesWeek += t;
         const d = new Date(o.created_at);
         const k = `${d.getDate()}/${d.getMonth() + 1}`;
         const slot = days.find((x) => x.day === k);
-        if (slot) slot.count++;
+        if (slot) { slot.count++; slot.sales += t; }
       });
+      (ordersAll.data || []).forEach((o: any) => { salesTotal += Number(o.total) || 0; });
+      const salesToday = (ordersT.data || []).reduce((s: number, o: any) => s + (Number(o.total) || 0), 0);
       (visitsW.data || []).forEach((v: any) => {
         const d = new Date(v.created_at);
         const k = `${d.getDate()}/${d.getMonth() + 1}`;
@@ -440,6 +448,9 @@ function Dashboard() {
         visitsLive: liveSessions.size,
         ordersToday: ordersT.count || 0,
         ordersTotal: ordersAll.count || 0,
+        salesToday,
+        salesWeek,
+        salesTotal,
         productsCount: productsCnt.count || 0,
         offersCount: offersCnt.count || 0,
         dailyOrders: days,
@@ -479,6 +490,12 @@ function Dashboard() {
         <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات اليوم" value={stats.salesToday} sub="إجمالي تحصيل اليوم" />
+        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات الأسبوع" value={stats.salesWeek} sub="آخر 7 أيام" />
+        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="إجمالي المبيعات" value={stats.salesTotal} sub="منذ بداية التشغيل" />
+      </div>
+
       <HomeHeroCard />
       <SpinWheelAdminCard />
 
@@ -507,6 +524,18 @@ function Dashboard() {
           </ResponsiveContainer>
         </Card>
       </div>
+
+      <Card title="المبيعات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={stats.dailyOrders}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+            <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${Number(v).toLocaleString("ar-EG")}`} />
+            <Tooltip formatter={(v: any) => [`${Number(v).toLocaleString("ar-EG")} ج.م`, "المبيعات"]} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+            <Bar dataKey="sales" fill="oklch(0.58 0.18 145)" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
 
       <Card title="آخر الطلبات">
         <div className="overflow-x-auto">
@@ -1262,7 +1291,7 @@ function Toggle({ label, v, on }: { label: string; v: boolean; on: (b: boolean) 
   );
 }
 
-function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: number; sub?: string; pulse?: boolean }) {
+function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: React.ReactNode; sub?: string; pulse?: boolean }) {
   return (
     <div className="rounded-2xl bg-gradient-card p-5 shadow-card">
       <div className="mb-2 flex items-center gap-2 text-muted-foreground">
@@ -1272,6 +1301,12 @@ function Stat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label
       <div className="text-3xl font-black">{value}</div>
       {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
     </div>
+  );
+}
+function MoneyStat({ icon, label, value, sub, pulse }: { icon: React.ReactNode; label: string; value: number; sub?: string; pulse?: boolean }) {
+  return (
+    <Stat icon={icon} label={label} sub={sub} pulse={pulse}
+      value={<span dir="ltr">{value.toLocaleString("ar-EG", { maximumFractionDigits: 0 })} <span className="text-sm font-semibold text-muted-foreground">ج.م</span></span>} />
   );
 }
 function Card({ title, icon, className = "", children }: { title: string; icon?: React.ReactNode; className?: string; children: React.ReactNode }) {
