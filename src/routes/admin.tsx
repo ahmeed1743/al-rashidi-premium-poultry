@@ -490,10 +490,37 @@ function Dashboard() {
         <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/20 via-primary/5 to-background p-6 shadow-card">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+              <TrendingUp className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-muted-foreground">إجمالي المبيعات من بداية الموقع</h3>
+              <div className="mt-1 text-4xl font-black tabular-nums" dir="ltr">
+                {stats.salesTotal.toLocaleString("ar-EG", { maximumFractionDigits: 0 })} <span className="text-xl font-semibold text-muted-foreground">ج.م</span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-background/60 p-3 text-center backdrop-blur-sm">
+              <div className="text-xs text-muted-foreground">إجمالي الطلبات</div>
+              <div className="text-2xl font-black tabular-nums">{stats.ordersTotal.toLocaleString("ar-EG")}</div>
+            </div>
+            <div className="rounded-xl bg-background/60 p-3 text-center backdrop-blur-sm">
+              <div className="text-xs text-muted-foreground">متوسط قيمة الطلب</div>
+              <div className="text-2xl font-black tabular-nums" dir="ltr">
+                {Math.round(stats.salesTotal / (stats.ordersTotal || 1)).toLocaleString("ar-EG")} <span className="text-sm font-semibold text-muted-foreground">ج.م</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات اليوم" value={stats.salesToday} sub="إجمالي تحصيل اليوم" />
         <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات الأسبوع" value={stats.salesWeek} sub="آخر 7 أيام" />
-        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="إجمالي المبيعات" value={stats.salesTotal} sub="منذ بداية التشغيل" />
       </div>
 
       <HomeHeroCard />
