@@ -490,6 +490,12 @@ function Dashboard() {
         <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات اليوم" value={stats.salesToday} sub="إجمالي تحصيل اليوم" />
+        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات الأسبوع" value={stats.salesWeek} sub="آخر 7 أيام" />
+        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="إجمالي المبيعات" value={stats.salesTotal} sub="منذ بداية التشغيل" />
+      </div>
+
       <HomeHeroCard />
       <SpinWheelAdminCard />
 
