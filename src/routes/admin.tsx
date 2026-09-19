@@ -525,6 +525,18 @@ function Dashboard() {
         </Card>
       </div>
 
+      <Card title="المبيعات اليومية (آخر 7 أيام)" icon={<TrendingUp className="h-4 w-4" />}>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart data={stats.dailyOrders}>
+            <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+            <XAxis dataKey="day" tick={{ fontSize: 12 }} />
+            <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${Number(v).toLocaleString("ar-EG")}`} />
+            <Tooltip formatter={(v: any) => [`${Number(v).toLocaleString("ar-EG")} ج.م`, "المبيعات"]} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+            <Bar dataKey="sales" fill="oklch(0.58 0.18 145)" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </Card>
+
       <Card title="آخر الطلبات">
         <div className="overflow-x-auto">
           <table className="w-full text-right text-sm">
