@@ -447,7 +447,7 @@ function Dashboard() {
         visitsWeek: visitsW.data?.length || 0,
         visitsLive: liveSessions.size,
         ordersToday: ordersT.count || 0,
-        ordersTotal: ordersAll.count || 0,
+        ordersTotal: ordersAll.data?.length || 0,
         salesToday,
         salesWeek,
         salesTotal,
