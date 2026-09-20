@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
+import offerFallbackImage from "@/assets/offer-fallback.jpg";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -665,6 +666,7 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
 
   return (
     <div className="mt-4 space-y-4">
+      {onlyOffers && <OfferTextImporter onSaved={load} />}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={filter}
@@ -734,6 +736,134 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
         />
       )}
     </div>
+  );
+}
+
+type OfferDraft = {
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  selected: boolean;
+};
+
+function offerSlug(name: string, index: number) {
+  const base = name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w-\u0600-\u06FF]/g, "")
+    .slice(0, 45) || `offer-${index + 1}`;
+  return `${base}-${Date.now().toString(36)}-${index + 1}`;
+}
+
+function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
+  const [text, setText] = useState("");
+  const [drafts, setDrafts] = useState<OfferDraft[]>([]);
+  const [extracting, setExtracting] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const extract = async () => {
+    if (text.trim().length < 10) return toast.error("اكتب نص العروض الأول");
+    setExtracting(true);
+    try {
+      const { extractOffersFromText } = await import("@/lib/offer-text.functions");
+      const result = await extractOffersFromText({ data: { text } });
+      setDrafts(result.offers.map((offer) => ({ ...offer, imageUrl: "", selected: true })));
+      toast.success(`تم استخراج ${result.offers.length} عرض — راجعهم قبل الحفظ`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحليل نص العروض");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const setDraft = (index: number, patch: Partial<OfferDraft>) => {
+    setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft));
+  };
+
+  const removeDraft = (index: number) => {
+    setDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index));
+  };
+
+  const save = async () => {
+    const chosen = drafts.filter((draft) => draft.selected && draft.name.trim() && draft.price > 0);
+    if (!chosen.length) return toast.error("اختار عرض واحد على الأقل للحفظ");
+    setSaving(true);
+    const rows = chosen.map((draft, index) => ({
+      ...emptyProduct(true),
+      id: offerSlug(draft.name, index),
+      name: draft.name.trim(),
+      description: draft.description.trim(),
+      price: Number(draft.price),
+      image_url: draft.imageUrl || offerFallbackImage,
+      category: "offers",
+      subcategory: "عروض يومية",
+      badge: "🔥 عرض",
+      sort_order: index,
+    }));
+    const { error } = await supabase.from("products").insert(rows);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`تم حفظ ${rows.length} عرض منفصل`);
+    setDrafts([]);
+    setText("");
+    onSaved();
+  };
+
+  return (
+    <Card title="✨ تحويل رسالة واتساب إلى عروض منفصلة">
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          الصق رسالة العروض كما هي. هيتم فصل كل عرض تلقائياً، وبعدها تقدر تعدّل الاسم والسعر والصورة قبل الحفظ.
+        </p>
+        <Textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="الصق نص عروض الواتساب هنا..."
+          className="min-h-52 resize-y text-sm leading-7"
+          dir="rtl"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={extract} disabled={extracting || text.trim().length < 10} className="bg-gradient-primary text-primary-foreground">
+            <Sparkles className="ml-2 h-4 w-4" />
+            {extracting ? "جاري فصل العروض..." : "استخرج العروض بالذكاء الاصطناعي"}
+          </Button>
+          {drafts.length > 0 && <span className="text-xs font-bold text-muted-foreground">راجع {drafts.length} عرض قبل الحفظ</span>}
+        </div>
+
+        {drafts.length > 0 && (
+          <div className="space-y-3 border-t border-border pt-4">
+            {drafts.map((draft, index) => (
+              <div key={`${index}-${draft.name}`} className={`grid gap-3 rounded-lg border p-3 md:grid-cols-[auto_1fr_8rem_15rem_auto] ${draft.selected ? "border-primary/40 bg-secondary/20" : "border-border opacity-60"}`}>
+                <div className="flex items-start pt-2">
+                  <Switch checked={draft.selected} onCheckedChange={(selected) => setDraft(index, { selected })} aria-label={`اختيار ${draft.name}`} />
+                </div>
+                <div className="space-y-2">
+                  <Input value={draft.name} onChange={(event) => setDraft(index, { name: event.target.value })} placeholder="اسم العرض" />
+                  <Textarea value={draft.description} onChange={(event) => setDraft(index, { description: event.target.value })} placeholder="تفاصيل العرض" className="min-h-16" />
+                </div>
+                <Field label="السعر">
+                  <Input type="number" min="0" step="0.01" value={draft.price} onChange={(event) => setDraft(index, { price: Number(event.target.value) || 0 })} />
+                </Field>
+                <Field label="الصورة (اختياري)">
+                  <ImageUploader value={draft.imageUrl} onChange={(imageUrl) => setDraft(index, { imageUrl })} productId={`offer-${index + 1}`} compact />
+                </Field>
+                <Button type="button" size="icon" variant="ghost" onClick={() => removeDraft(index)} aria-label="حذف العرض">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/30 p-3">
+              <span className="text-xs text-muted-foreground">أي عرض بدون صورة هياخد صورة عروض جاهزة تلقائياً.</span>
+              <Button onClick={save} disabled={saving} className="bg-gradient-primary text-primary-foreground">
+                <Save className="ml-2 h-4 w-4" />{saving ? "جاري الحفظ..." : "حفظ العروض المختارة"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -1392,7 +1522,7 @@ function HomeHeroCard() {
   );
 }
 
-function ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
+function ImageUploader({ value, onChange, productId, compact = false }: { value: string; onChange: (url: string) => void; productId: string; compact?: boolean }) {
   const [uploading, setUploading] = useState(false);
   const onFile = async (file: File) => {
     setUploading(true);
@@ -1428,7 +1558,7 @@ function ImageUploader({ value, onChange, productId }: { value: string; onChange
           <Button type="button" size="icon" variant="ghost" onClick={() => onChange("")}><X className="h-4 w-4" /></Button>
         )}
       </div>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />
+      {!compact && <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />}
     </div>
   );
 }
