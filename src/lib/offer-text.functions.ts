@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const Input = z.object({ text: z.string().trim().min(10).max(30_000) });
 
@@ -39,8 +40,17 @@ function parseOffers(text: string): ExtractedOffer[] {
 }
 
 export const extractOffersFromText = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => Input.parse(data))
-  .handler(async ({ data }): Promise<{ offers: ExtractedOffer[] }> => {
+  .handler(async ({ data, context }): Promise<{ offers: ExtractedOffer[] }> => {
+    const { data: roles } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "admin")
+      .limit(1);
+    if (!roles?.length) throw new Error("غير مسموح باستخدام أداة العروض");
+
     const key = process.env["LOVABLE_API_KEY"];
     if (!key) throw new Error("خدمة الذكاء الاصطناعي غير مفعلة حالياً");
 
