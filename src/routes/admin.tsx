@@ -14,7 +14,7 @@ import {
 } from "recharts";
 import {
   Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
-  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X,
+  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
@@ -28,7 +28,16 @@ const DEFAULT_SIZE_OPTIONS = [
 ];
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "لوحة الإدارة — طيور الرشيدي" }] }),
+  head: () => ({
+    meta: [
+      { title: "لوحة الإدارة — طيور الرشيدي" },
+      { name: "description", content: "إدارة منتجات وعروض وطلبات طيور الرشيدي." },
+      { property: "og:title", content: "لوحة الإدارة — طيور الرشيدي" },
+      { property: "og:description", content: "إدارة منتجات وعروض وطلبات طيور الرشيدي." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminPage,
 });
 
