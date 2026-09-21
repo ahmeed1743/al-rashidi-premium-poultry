@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
-import offerFallbackImage from "@/assets/offer-fallback.jpg";
+import { streamImage } from "@/lib/stream-image";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -754,6 +754,8 @@ type OfferDraft = {
   price: number;
   imageUrl: string;
   selected: boolean;
+  imageGenerating: boolean;
+  imageError: string;
 };
 
 function offerSlug(name: string, index: number) {
@@ -772,23 +774,69 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
   const [extracting, setExtracting] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const setDraft = (index: number, patch: Partial<OfferDraft>) => {
+    setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft));
+  };
+
+  const uploadGeneratedImage = async (dataUrl: string, index: number) => {
+    const blob = await fetch(dataUrl).then((response) => response.blob());
+    const path = `offer-ai-${Date.now()}-${index + 1}.png`;
+    const { error } = await supabase.storage.from("product-images").upload(path, blob, {
+      upsert: true,
+      contentType: "image/png",
+    });
+    if (error) throw error;
+    return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+  };
+
+  const generateImage = async (index: number, offer: Pick<OfferDraft, "name" | "description">) => {
+    setDraft(index, { imageGenerating: true, imageError: "" });
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("سجل الدخول مرة أخرى لإنشاء الصور");
+      let finalDataUrl = "";
+      await streamImage(
+        "/api/generate-offer-image",
+        { name: offer.name, description: offer.description },
+        (dataUrl, isFinal) => {
+          setDraft(index, { imageUrl: dataUrl });
+          if (isFinal) finalDataUrl = dataUrl;
+        },
+        { Authorization: `Bearer ${accessToken}` },
+      );
+      if (!finalDataUrl) throw new Error("لم تكتمل صورة العرض");
+      const publicUrl = await uploadGeneratedImage(finalDataUrl, index);
+      setDraft(index, { imageUrl: publicUrl, imageGenerating: false, imageError: "" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "تعذر إنشاء صورة العرض";
+      setDraft(index, { imageUrl: "", imageGenerating: false, imageError: message });
+    }
+  };
+
   const extract = async () => {
     if (text.trim().length < 10) return toast.error("اكتب نص العروض الأول");
     setExtracting(true);
     try {
       const { extractOffersFromText } = await import("@/lib/offer-text.functions");
       const result = await extractOffersFromText({ data: { text } });
-      setDrafts(result.offers.map((offer) => ({ ...offer, imageUrl: "", selected: true })));
-      toast.success(`تم استخراج ${result.offers.length} عرض — راجعهم قبل الحفظ`);
+      const nextDrafts = result.offers.map((offer) => ({
+        ...offer,
+        imageUrl: "",
+        selected: true,
+        imageGenerating: false,
+        imageError: "",
+      }));
+      setDrafts(nextDrafts);
+      toast.success(`تم استخراج ${result.offers.length} عرض — جاري إنشاء الصور تلقائياً`);
+      for (const [index, offer] of nextDrafts.entries()) {
+        await generateImage(index, offer);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تحليل نص العروض");
     } finally {
       setExtracting(false);
     }
-  };
-
-  const setDraft = (index: number, patch: Partial<OfferDraft>) => {
-    setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft));
   };
 
   const removeDraft = (index: number) => {
@@ -805,7 +853,7 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
       name: draft.name.trim(),
       description: draft.description.trim(),
       price: Number(draft.price),
-      image_url: draft.imageUrl || offerFallbackImage,
+      image_url: draft.imageUrl,
       category: "offers",
       subcategory: "عروض يومية",
       badge: "🔥 عرض",
@@ -855,8 +903,19 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
                 <Field label="السعر">
                   <Input type="number" min="0" step="0.01" value={draft.price} onChange={(event) => setDraft(index, { price: Number(event.target.value) || 0 })} />
                 </Field>
-                <Field label="الصورة (اختياري)">
-                  <ImageUploader value={draft.imageUrl} onChange={(imageUrl) => setDraft(index, { imageUrl })} productId={`offer-${index + 1}`} compact />
+                <Field label="الصورة">
+                  <div className={draft.imageGenerating ? "blur-sm transition-[filter]" : "transition-[filter]"}>
+                    <ImageUploader value={draft.imageUrl} onChange={(imageUrl) => setDraft(index, { imageUrl, imageError: "" })} productId={`offer-${index + 1}`} compact />
+                  </div>
+                  {draft.imageGenerating && <div className="mt-1 text-[11px] font-bold text-primary">جاري إنشاء الصورة تلقائياً...</div>}
+                  {draft.imageError && (
+                    <div className="mt-1 space-y-1">
+                      <div className="text-[11px] text-destructive">{draft.imageError}</div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => generateImage(index, draft)}>
+                        <RefreshCw className="ml-1 h-3 w-3" /> إعادة إنشاء الصورة
+                      </Button>
+                    </div>
+                  )}
                 </Field>
                 <Button type="button" size="icon" variant="ghost" onClick={() => removeDraft(index)} aria-label="حذف العرض">
                   <Trash2 className="h-4 w-4 text-destructive" />
@@ -864,8 +923,8 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
               </div>
             ))}
             <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/30 p-3">
-              <span className="text-xs text-muted-foreground">أي عرض بدون صورة هياخد صورة عروض جاهزة تلقائياً.</span>
-              <Button onClick={save} disabled={saving} className="bg-gradient-primary text-primary-foreground">
+              <span className="text-xs text-muted-foreground">الصور بتتعمل تلقائياً، وتقدر تغيّر أي صورة من زر رفع صورة.</span>
+              <Button onClick={save} disabled={saving || drafts.some((draft) => draft.imageGenerating)} className="bg-gradient-primary text-primary-foreground">
                 <Save className="ml-2 h-4 w-4" />{saving ? "جاري الحفظ..." : "حفظ العروض المختارة"}
               </Button>
             </div>
