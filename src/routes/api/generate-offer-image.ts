@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/generate-offer-image")({
           auth: { persistSession: false, autoRefreshToken: false },
         });
         const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-        const userId = claims.claims?.sub;
+        const userId = claims?.claims?.sub;
         if (claimsError || !userId) return new Response("جلسة الدخول غير صالحة", { status: 401 });
         const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").limit(1);
         if (!roles?.length) return new Response("غير مسموح بإنشاء الصور", { status: 403 });
