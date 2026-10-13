@@ -19,6 +19,8 @@ import {
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
 import { streamImage } from "@/lib/stream-image";
+import { cairoDayKey, cairoStartOfDay } from "@/lib/cairo-date";
+import { NotificationsAdmin } from "@/components/admin/NotificationsAdmin";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -378,6 +380,7 @@ function AdminPage() {
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
             <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
+            <TabsTrigger value="notifications">🔔 الإشعارات</TabsTrigger>
           </TabsList>
           <TabsContent value="overview"><Dashboard /></TabsContent>
           <TabsContent value="products"><ProductsAdmin /></TabsContent>
@@ -387,6 +390,7 @@ function AdminPage() {
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
           <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
+          <TabsContent value="notifications"><NotificationsAdmin /></TabsContent>
         </Tabs>
       </div>
     </SiteLayout>
@@ -407,15 +411,15 @@ function Dashboard() {
   useEffect(() => {
     (async () => {
       const now = new Date();
-      const startToday = new Date(now); startToday.setHours(0, 0, 0, 0);
-      const startWeek = new Date(now); startWeek.setDate(startWeek.getDate() - 6); startWeek.setHours(0, 0, 0, 0);
+      const startToday = cairoStartOfDay(now);
+      const startWeek = cairoStartOfDay(now, 6);
       const live5 = new Date(now.getTime() - 5 * 60 * 1000);
 
       const [visitsT, visitsW, visitsLive, ordersT, ordersAll, ordersWeekFull, recent, productsCnt, offersCnt] = await Promise.all([
         supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
-        supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("total", { count: "exact" }).gte("created_at", startToday.toISOString()),
         supabase.from("orders").select("total"),
         supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
@@ -426,8 +430,9 @@ function Dashboard() {
       const days: { day: string; count: number; sales: number }[] = [];
       const visitDays: { day: string; count: number }[] = [];
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(now); d.setDate(d.getDate() - i);
-        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        const dateKey = cairoDayKey(cairoStartOfDay(now, i));
+        const [, month, day] = dateKey.split("-");
+        const k = `${Number(day)}/${Number(month)}`;
         days.push({ day: k, count: 0, sales: 0 });
         visitDays.push({ day: k, count: 0 });
       }
@@ -436,16 +441,16 @@ function Dashboard() {
       (ordersWeekFull.data || []).forEach((o: any) => {
         const t = Number(o.total) || 0;
         salesWeek += t;
-        const d = new Date(o.created_at);
-        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        const [, month, day] = cairoDayKey(new Date(o.created_at)).split("-");
+        const k = `${Number(day)}/${Number(month)}`;
         const slot = days.find((x) => x.day === k);
         if (slot) { slot.count++; slot.sales += t; }
       });
       (ordersAll.data || []).forEach((o: any) => { salesTotal += Number(o.total) || 0; });
       const salesToday = (ordersT.data || []).reduce((s: number, o: any) => s + (Number(o.total) || 0), 0);
       (visitsW.data || []).forEach((v: any) => {
-        const d = new Date(v.created_at);
-        const k = `${d.getDate()}/${d.getMonth() + 1}`;
+        const [, month, day] = cairoDayKey(new Date(v.created_at)).split("-");
+        const k = `${Number(day)}/${Number(month)}`;
         const slot = visitDays.find((x) => x.day === k);
         if (slot) slot.count++;
       });
@@ -808,9 +813,11 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
       if (!finalDataUrl) throw new Error("لم تكتمل صورة العرض");
       const publicUrl = await uploadGeneratedImage(finalDataUrl, index);
       setDraft(index, { imageUrl: publicUrl, imageGenerating: false, imageError: "" });
+      return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : "تعذر إنشاء صورة العرض";
       setDraft(index, { imageUrl: "", imageGenerating: false, imageError: message });
+      return false;
     }
   };
 
@@ -830,7 +837,8 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
       setDrafts(nextDrafts);
       toast.success(`تم استخراج ${result.offers.length} عرض — جاري إنشاء الصور تلقائياً`);
       for (const [index, offer] of nextDrafts.entries()) {
-        await generateImage(index, offer);
+        const completed = await generateImage(index, offer);
+        if (!completed) break;
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "تعذر تحليل نص العروض");
@@ -846,6 +854,7 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
   const save = async () => {
     const chosen = drafts.filter((draft) => draft.selected && draft.name.trim() && draft.price > 0);
     if (!chosen.length) return toast.error("اختار عرض واحد على الأقل للحفظ");
+    if (chosen.some((draft) => !draft.imageUrl || draft.imageGenerating)) return toast.error("استنى اكتمال الصور أو ارفع صورة للعروض التي لم تكتمل");
     setSaving(true);
     const rows = chosen.map((draft, index) => ({
       ...emptyProduct(true),
@@ -904,27 +913,24 @@ function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
                   <Input type="number" min="0" step="0.01" value={draft.price} onChange={(event) => setDraft(index, { price: Number(event.target.value) || 0 })} />
                 </Field>
                 <Field label="الصورة">
-                  <div className={draft.imageGenerating ? "blur-sm transition-[filter]" : "transition-[filter]"}>
+                  <div className={draft.imageGenerating ? "pointer-events-none blur-sm transition-[filter]" : "transition-[filter]"}>
                     <ImageUploader value={draft.imageUrl} onChange={(imageUrl) => setDraft(index, { imageUrl, imageError: "" })} productId={`offer-${index + 1}`} compact />
                   </div>
                   {draft.imageGenerating && <div className="mt-1 text-[11px] font-bold text-primary">جاري إنشاء الصورة تلقائياً...</div>}
                   {draft.imageError && (
                     <div className="mt-1 space-y-1">
                       <div className="text-[11px] text-destructive">{draft.imageError}</div>
-                      <Button type="button" size="sm" variant="outline" onClick={() => generateImage(index, draft)}>
-                        <RefreshCw className="ml-1 h-3 w-3" /> إعادة إنشاء الصورة
-                      </Button>
                     </div>
                   )}
                 </Field>
-                <Button type="button" size="icon" variant="ghost" onClick={() => removeDraft(index)} aria-label="حذف العرض">
+                <Button type="button" size="icon" variant="ghost" disabled={extracting || drafts.some((item) => item.imageGenerating)} onClick={() => removeDraft(index)} aria-label="حذف العرض">
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
             ))}
             <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/30 p-3">
               <span className="text-xs text-muted-foreground">الصور بتتعمل تلقائياً، وتقدر تغيّر أي صورة من زر رفع صورة.</span>
-              <Button onClick={save} disabled={saving || drafts.some((draft) => draft.imageGenerating)} className="bg-gradient-primary text-primary-foreground">
+              <Button onClick={save} disabled={saving || extracting || drafts.some((draft) => draft.imageGenerating)} className="bg-gradient-primary text-primary-foreground">
                 <Save className="ml-2 h-4 w-4" />{saving ? "جاري الحفظ..." : "حفظ العروض المختارة"}
               </Button>
             </div>
