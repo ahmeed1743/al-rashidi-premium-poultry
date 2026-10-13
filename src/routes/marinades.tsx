@@ -10,6 +10,10 @@ export const Route = createFileRoute("/marinades")({
     meta: [
       { title: "المتبلات — طيور الرشيدي" },
       { name: "description", content: "متبلات يومية بنكهات مميزة جاهزة للطبخ والشواء." },
+      { property: "og:title", content: "المتبلات — طيور الرشيدي" },
+      { property: "og:description", content: "متبلات طيور الرشيدي جاهزة للطبخ والشواء." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: MarinadesPage,

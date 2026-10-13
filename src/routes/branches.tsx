@@ -7,6 +7,10 @@ export const Route = createFileRoute("/branches")({
     meta: [
       { title: "الفروع — طيور الرشيدي" },
       { name: "description", content: "اعرف أقرب فرع لطيور الرشيدي ومواعيد العمل." },
+      { property: "og:title", content: "الفروع — طيور الرشيدي" },
+      { property: "og:description", content: "عناوين فروع طيور الرشيدي ووسائل التواصل." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: BranchesPage,

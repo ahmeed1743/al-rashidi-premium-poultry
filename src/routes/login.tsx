@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/login")({
-  head: () => ({ meta: [{ title: "تسجيل الدخول — طيور الرشيدي" }] }),
+  head: () => ({ meta: [
+    { title: "تسجيل الدخول — طيور الرشيدي" },
+    { name: "description", content: "تسجيل الدخول إلى حساب طيور الرشيدي." },
+    { property: "og:title", content: "تسجيل الدخول — طيور الرشيدي" },
+    { property: "og:description", content: "تسجيل الدخول إلى حساب طيور الرشيدي." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: LoginPage,
 });
 
