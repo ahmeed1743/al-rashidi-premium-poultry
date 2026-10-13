@@ -9,11 +9,15 @@ export async function streamImage(
   onFrame: (dataUrl: string, isFinal: boolean) => void,
   headers?: HeadersInit,
 ): Promise<void> {
-  const send = (stream: boolean) => fetch(endpoint, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...headers },
-    body: JSON.stringify({ ...input, stream }),
-  });
+  const send = (stream: boolean) => {
+    const requestHeaders = new Headers(headers);
+    requestHeaders.set("Content-Type", "application/json");
+    return fetch(endpoint, {
+      method: "POST",
+      headers: requestHeaders,
+      body: JSON.stringify({ ...input, stream }),
+    });
+  };
 
   const response = await send(true);
   if (!response.ok || !response.body) {
