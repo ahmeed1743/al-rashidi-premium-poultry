@@ -14,10 +14,11 @@ import {
 } from "recharts";
 import {
   Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
-  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X,
+  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X, Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
+import { streamImage } from "@/lib/stream-image";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -27,7 +28,16 @@ const DEFAULT_SIZE_OPTIONS = [
 ];
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "لوحة الإدارة — طيور الرشيدي" }] }),
+  head: () => ({
+    meta: [
+      { title: "لوحة الإدارة — طيور الرشيدي" },
+      { name: "description", content: "إدارة منتجات وعروض وطلبات طيور الرشيدي." },
+      { property: "og:title", content: "لوحة الإدارة — طيور الرشيدي" },
+      { property: "og:description", content: "إدارة منتجات وعروض وطلبات طيور الرشيدي." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminPage,
 });
 
@@ -406,7 +416,7 @@ function Dashboard() {
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
         supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
-        supabase.from("orders").select("total", { count: "exact", head: true }),
+        supabase.from("orders").select("total"),
         supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
         supabase.from("products").select("id", { count: "exact", head: true }),
@@ -447,7 +457,7 @@ function Dashboard() {
         visitsWeek: visitsW.data?.length || 0,
         visitsLive: liveSessions.size,
         ordersToday: ordersT.count || 0,
-        ordersTotal: ordersAll.count || 0,
+        ordersTotal: ordersAll.data?.length || 0,
         salesToday,
         salesWeek,
         salesTotal,
@@ -490,10 +500,37 @@ function Dashboard() {
         <Stat icon={<Package className="h-5 w-5" />} label="المنتجات" value={stats.productsCount} sub={`${stats.offersCount} عرض نشط`} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/20 via-primary/5 to-background p-6 shadow-card">
+        <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-lg">
+              <TrendingUp className="h-7 w-7" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-muted-foreground">إجمالي المبيعات من بداية الموقع</h3>
+              <div className="mt-1 text-4xl font-black tabular-nums" dir="ltr">
+                {stats.salesTotal.toLocaleString("ar-EG", { maximumFractionDigits: 0 })} <span className="text-xl font-semibold text-muted-foreground">ج.م</span>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-background/60 p-3 text-center backdrop-blur-sm">
+              <div className="text-xs text-muted-foreground">إجمالي الطلبات</div>
+              <div className="text-2xl font-black tabular-nums">{stats.ordersTotal.toLocaleString("ar-EG")}</div>
+            </div>
+            <div className="rounded-xl bg-background/60 p-3 text-center backdrop-blur-sm">
+              <div className="text-xs text-muted-foreground">متوسط قيمة الطلب</div>
+              <div className="text-2xl font-black tabular-nums" dir="ltr">
+                {Math.round(stats.salesTotal / (stats.ordersTotal || 1)).toLocaleString("ar-EG")} <span className="text-sm font-semibold text-muted-foreground">ج.م</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات اليوم" value={stats.salesToday} sub="إجمالي تحصيل اليوم" />
         <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="مبيعات الأسبوع" value={stats.salesWeek} sub="آخر 7 أيام" />
-        <MoneyStat icon={<TrendingUp className="h-5 w-5" />} label="إجمالي المبيعات" value={stats.salesTotal} sub="منذ بداية التشغيل" />
       </div>
 
       <HomeHeroCard />
@@ -638,6 +675,7 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
 
   return (
     <div className="mt-4 space-y-4">
+      {onlyOffers && <OfferTextImporter onSaved={load} />}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={filter}
@@ -707,6 +745,193 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
         />
       )}
     </div>
+  );
+}
+
+type OfferDraft = {
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  selected: boolean;
+  imageGenerating: boolean;
+  imageError: string;
+};
+
+function offerSlug(name: string, index: number) {
+  const base = name
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\w-\u0600-\u06FF]/g, "")
+    .slice(0, 45) || `offer-${index + 1}`;
+  return `${base}-${Date.now().toString(36)}-${index + 1}`;
+}
+
+function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
+  const [text, setText] = useState("");
+  const [drafts, setDrafts] = useState<OfferDraft[]>([]);
+  const [extracting, setExtracting] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const setDraft = (index: number, patch: Partial<OfferDraft>) => {
+    setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft));
+  };
+
+  const uploadGeneratedImage = async (dataUrl: string, index: number) => {
+    const blob = await fetch(dataUrl).then((response) => response.blob());
+    const path = `offer-ai-${Date.now()}-${index + 1}.png`;
+    const { error } = await supabase.storage.from("product-images").upload(path, blob, {
+      upsert: true,
+      contentType: "image/png",
+    });
+    if (error) throw error;
+    return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
+  };
+
+  const generateImage = async (index: number, offer: Pick<OfferDraft, "name" | "description">) => {
+    setDraft(index, { imageGenerating: true, imageError: "" });
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("سجل الدخول مرة أخرى لإنشاء الصور");
+      let finalDataUrl = "";
+      await streamImage(
+        "/api/generate-offer-image",
+        { name: offer.name, description: offer.description },
+        (dataUrl, isFinal) => {
+          setDraft(index, { imageUrl: dataUrl });
+          if (isFinal) finalDataUrl = dataUrl;
+        },
+        { Authorization: `Bearer ${accessToken}` },
+      );
+      if (!finalDataUrl) throw new Error("لم تكتمل صورة العرض");
+      const publicUrl = await uploadGeneratedImage(finalDataUrl, index);
+      setDraft(index, { imageUrl: publicUrl, imageGenerating: false, imageError: "" });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "تعذر إنشاء صورة العرض";
+      setDraft(index, { imageUrl: "", imageGenerating: false, imageError: message });
+    }
+  };
+
+  const extract = async () => {
+    if (text.trim().length < 10) return toast.error("اكتب نص العروض الأول");
+    setExtracting(true);
+    try {
+      const { extractOffersFromText } = await import("@/lib/offer-text.functions");
+      const result = await extractOffersFromText({ data: { text } });
+      const nextDrafts = result.offers.map((offer) => ({
+        ...offer,
+        imageUrl: "",
+        selected: true,
+        imageGenerating: false,
+        imageError: "",
+      }));
+      setDrafts(nextDrafts);
+      toast.success(`تم استخراج ${result.offers.length} عرض — جاري إنشاء الصور تلقائياً`);
+      for (const [index, offer] of nextDrafts.entries()) {
+        await generateImage(index, offer);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "تعذر تحليل نص العروض");
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  const removeDraft = (index: number) => {
+    setDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index));
+  };
+
+  const save = async () => {
+    const chosen = drafts.filter((draft) => draft.selected && draft.name.trim() && draft.price > 0);
+    if (!chosen.length) return toast.error("اختار عرض واحد على الأقل للحفظ");
+    setSaving(true);
+    const rows = chosen.map((draft, index) => ({
+      ...emptyProduct(true),
+      id: offerSlug(draft.name, index),
+      name: draft.name.trim(),
+      description: draft.description.trim(),
+      price: Number(draft.price),
+      image_url: draft.imageUrl,
+      category: "offers",
+      subcategory: "عروض يومية",
+      badge: "🔥 عرض",
+      sort_order: index,
+    }));
+    const { error } = await supabase.from("products").insert(rows);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`تم حفظ ${rows.length} عرض منفصل`);
+    setDrafts([]);
+    setText("");
+    onSaved();
+  };
+
+  return (
+    <Card title="✨ تحويل رسالة واتساب إلى عروض منفصلة">
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          الصق رسالة العروض كما هي. هيتم فصل كل عرض تلقائياً، وبعدها تقدر تعدّل الاسم والسعر والصورة قبل الحفظ.
+        </p>
+        <Textarea
+          value={text}
+          onChange={(event) => setText(event.target.value)}
+          placeholder="الصق نص عروض الواتساب هنا..."
+          className="min-h-52 resize-y text-sm leading-7"
+          dir="rtl"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={extract} disabled={extracting || text.trim().length < 10} className="bg-gradient-primary text-primary-foreground">
+            <Sparkles className="ml-2 h-4 w-4" />
+            {extracting ? "جاري فصل العروض..." : "استخرج العروض بالذكاء الاصطناعي"}
+          </Button>
+          {drafts.length > 0 && <span className="text-xs font-bold text-muted-foreground">راجع {drafts.length} عرض قبل الحفظ</span>}
+        </div>
+
+        {drafts.length > 0 && (
+          <div className="space-y-3 border-t border-border pt-4">
+            {drafts.map((draft, index) => (
+              <div key={`${index}-${draft.name}`} className={`grid gap-3 rounded-lg border p-3 md:grid-cols-[auto_1fr_8rem_15rem_auto] ${draft.selected ? "border-primary/40 bg-secondary/20" : "border-border opacity-60"}`}>
+                <div className="flex items-start pt-2">
+                  <Switch checked={draft.selected} onCheckedChange={(selected) => setDraft(index, { selected })} aria-label={`اختيار ${draft.name}`} />
+                </div>
+                <div className="space-y-2">
+                  <Input value={draft.name} onChange={(event) => setDraft(index, { name: event.target.value })} placeholder="اسم العرض" />
+                  <Textarea value={draft.description} onChange={(event) => setDraft(index, { description: event.target.value })} placeholder="تفاصيل العرض" className="min-h-16" />
+                </div>
+                <Field label="السعر">
+                  <Input type="number" min="0" step="0.01" value={draft.price} onChange={(event) => setDraft(index, { price: Number(event.target.value) || 0 })} />
+                </Field>
+                <Field label="الصورة">
+                  <div className={draft.imageGenerating ? "blur-sm transition-[filter]" : "transition-[filter]"}>
+                    <ImageUploader value={draft.imageUrl} onChange={(imageUrl) => setDraft(index, { imageUrl, imageError: "" })} productId={`offer-${index + 1}`} compact />
+                  </div>
+                  {draft.imageGenerating && <div className="mt-1 text-[11px] font-bold text-primary">جاري إنشاء الصورة تلقائياً...</div>}
+                  {draft.imageError && (
+                    <div className="mt-1 space-y-1">
+                      <div className="text-[11px] text-destructive">{draft.imageError}</div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => generateImage(index, draft)}>
+                        <RefreshCw className="ml-1 h-3 w-3" /> إعادة إنشاء الصورة
+                      </Button>
+                    </div>
+                  )}
+                </Field>
+                <Button type="button" size="icon" variant="ghost" onClick={() => removeDraft(index)} aria-label="حذف العرض">
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+              </div>
+            ))}
+            <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/30 p-3">
+              <span className="text-xs text-muted-foreground">الصور بتتعمل تلقائياً، وتقدر تغيّر أي صورة من زر رفع صورة.</span>
+              <Button onClick={save} disabled={saving || drafts.some((draft) => draft.imageGenerating)} className="bg-gradient-primary text-primary-foreground">
+                <Save className="ml-2 h-4 w-4" />{saving ? "جاري الحفظ..." : "حفظ العروض المختارة"}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -1365,7 +1590,7 @@ function HomeHeroCard() {
   );
 }
 
-function ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
+function ImageUploader({ value, onChange, productId, compact = false }: { value: string; onChange: (url: string) => void; productId: string; compact?: boolean }) {
   const [uploading, setUploading] = useState(false);
   const onFile = async (file: File) => {
     setUploading(true);
@@ -1401,7 +1626,7 @@ function ImageUploader({ value, onChange, productId }: { value: string; onChange
           <Button type="button" size="icon" variant="ghost" onClick={() => onChange("")}><X className="h-4 w-4" /></Button>
         )}
       </div>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />
+      {!compact && <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />}
     </div>
   );
 }

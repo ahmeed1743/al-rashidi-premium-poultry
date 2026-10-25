@@ -18,6 +18,7 @@ import { Route as CheckoutRouteImport } from './routes/checkout'
 import { Route as BranchesRouteImport } from './routes/branches'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiGenerateOfferImageRouteImport } from './routes/api/generate-offer-image'
 
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
@@ -64,6 +65,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGenerateOfferImageRoute = ApiGenerateOfferImageRouteImport.update({
+  id: '/api/generate-offer-image',
+  path: '/api/generate-offer-image',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
   '/products': typeof ProductsRoute
+  '/api/generate-offer-image': typeof ApiGenerateOfferImageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
   '/products': typeof ProductsRoute
+  '/api/generate-offer-image': typeof ApiGenerateOfferImageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
   '/products': typeof ProductsRoute
+  '/api/generate-offer-image': typeof ApiGenerateOfferImageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/meals'
     | '/offers'
     | '/products'
+    | '/api/generate-offer-image'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/meals'
     | '/offers'
     | '/products'
+    | '/api/generate-offer-image'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/meals'
     | '/offers'
     | '/products'
+    | '/api/generate-offer-image'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -145,6 +157,7 @@ export interface RootRouteChildren {
   MealsRoute: typeof MealsRoute
   OffersRoute: typeof OffersRoute
   ProductsRoute: typeof ProductsRoute
+  ApiGenerateOfferImageRoute: typeof ApiGenerateOfferImageRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/generate-offer-image': {
+      id: '/api/generate-offer-image'
+      path: '/api/generate-offer-image'
+      fullPath: '/api/generate-offer-image'
+      preLoaderRoute: typeof ApiGenerateOfferImageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -225,6 +245,7 @@ const rootRouteChildren: RootRouteChildren = {
   MealsRoute: MealsRoute,
   OffersRoute: OffersRoute,
   ProductsRoute: ProductsRoute,
+  ApiGenerateOfferImageRoute: ApiGenerateOfferImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
