@@ -3,14 +3,7 @@ import { SiteLayout } from "@/components/site/SiteLayout";
 import { CategoryGrid } from "@/components/site/CategoryGrid";
 
 export const Route = createFileRoute("/meals")({
-  head: () => ({ meta: [
-    { title: "اختيارات الوجبات — طيور الرشيدي" },
-    { name: "description", content: "اختيارات طيور الرشيدي لتحضير وجباتك." },
-    { property: "og:title", content: "اختيارات الوجبات — طيور الرشيدي" },
-    { property: "og:description", content: "اختيارات طيور الرشيدي لتحضير وجباتك." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({ meta: [{ title: "المنتجات — طيور الرشيدي" }] }),
   component: () => (
     <SiteLayout>
       <div className="container mx-auto px-4 py-10">

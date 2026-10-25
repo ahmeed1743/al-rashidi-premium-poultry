@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import logoAsset from "@/assets/logo.jpg.asset.json";
 import { ThemeToggle } from "./ThemeToggle";
-import { Notifications } from "./Notifications";
 
 const links = [
   { to: "/", label: "الرئيسية" },
@@ -71,8 +70,7 @@ export function Navbar() {
           })}
         </nav>
 
-        <div className="flex items-center gap-1 md:gap-2">
-          <Notifications />
+        <div className="flex items-center gap-2">
           <Link
             to="/products"
             hash="site-search"
@@ -84,14 +82,14 @@ export function Navbar() {
               }, 100);
             }}
             aria-label="بحث"
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full glass md:h-11 md:w-11"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full glass"
           >
             <Search className="h-5 w-5" />
           </Link>
           <ThemeToggle />
           <button
             onClick={() => setMobile((v) => !v)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-full glass md:h-11 md:w-11 lg:hidden"
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full glass lg:hidden"
             aria-label="القائمة"
           >
             {mobile ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

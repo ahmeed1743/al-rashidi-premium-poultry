@@ -7,10 +7,6 @@ export const Route = createFileRoute("/products")({
     meta: [
       { title: "المنتجات — طيور الرشيدي" },
       { name: "description", content: "كل منتجات طيور الرشيدي: فراخ، بط، رومي، حمام وسمان، متبلات، أجزاء، وأرانب." },
-      { property: "og:title", content: "المنتجات — طيور الرشيدي" },
-      { property: "og:description", content: "تسوق منتجات طيور الرشيدي الطازجة." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: ProductsPage,

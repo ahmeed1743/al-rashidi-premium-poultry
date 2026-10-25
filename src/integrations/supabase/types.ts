@@ -83,30 +83,6 @@ export type Database = {
         }
         Relationships: []
       }
-      customer_announcements: {
-        Row: {
-          body: string
-          created_at: string
-          id: string
-          is_active: boolean
-          title: string
-        }
-        Insert: {
-          body?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          title?: string
-        }
-        Update: {
-          body?: string
-          created_at?: string
-          id?: string
-          is_active?: boolean
-          title?: string
-        }
-        Relationships: []
-      }
       orders: {
         Row: {
           branch: string | null

@@ -36,10 +36,6 @@ export const Route = createFileRoute("/checkout")({
     meta: [
       { title: "إتمام الطلب — طيور الرشيدي" },
       { name: "description", content: "أكمل طلبك بكل سهولة عبر واتساب." },
-      { property: "og:title", content: "إتمام الطلب — طيور الرشيدي" },
-      { property: "og:description", content: "أكمل طلب طيور الرشيدي وأرسله عبر واتساب." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: CheckoutPage,

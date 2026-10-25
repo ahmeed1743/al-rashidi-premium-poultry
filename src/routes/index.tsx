@@ -17,10 +17,6 @@ export const Route = createFileRoute("/")({
     meta: [
       { title: "طيور الرشيدي — دواجن طازجة وعروض يومية" },
       { name: "description", content: "اطلب فراخ بيضاء وبلدي، بط، رومي، حمام وسمان، أرانب، ومتبلات بأعلى جودة." },
-      { property: "og:title", content: "طيور الرشيدي — دواجن طازجة وعروض يومية" },
-      { property: "og:description", content: "اطلب دواجن طازجة وعروض طيور الرشيدي اليومية." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Home,

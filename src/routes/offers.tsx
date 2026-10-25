@@ -10,10 +10,6 @@ export const Route = createFileRoute("/offers")({
     meta: [
       { title: "العروض — طيور الرشيدي" },
       { name: "description", content: "عروض حصرية يومية وتوفير مميز على دواجنك المفضلة." },
-      { property: "og:title", content: "العروض — طيور الرشيدي" },
-      { property: "og:description", content: "عروض حصرية يومية على دواجن طيور الرشيدي." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: OffersPage,
