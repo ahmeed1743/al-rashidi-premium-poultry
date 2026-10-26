@@ -2104,7 +2104,7 @@ function NotificationsTab() {
   const load = async () => {
     setLoading(true);
     const { data } = await supabase.from("notifications" as any).select("*").order("created_at", { ascending: false });
-    setRows((data || []) as NotificationRow[]);
+    setRows(((data || []) as unknown) as NotificationRow[]);
     setLoading(false);
   };
 
