@@ -14,11 +14,10 @@ import {
 } from "recharts";
 import {
   Users, ShoppingBag, Package, TrendingUp, LogOut, Tag,
-  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X, Sparkles,
+  Plus, Pencil, Trash2, Save, RefreshCw, Activity, Clock, Upload, Download, MapPin, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
-import { streamImage } from "@/lib/stream-image";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -28,16 +27,7 @@ const DEFAULT_SIZE_OPTIONS = [
 ];
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({
-    meta: [
-      { title: "لوحة الإدارة — طيور الرشيدي" },
-      { name: "description", content: "إدارة منتجات وعروض وطلبات طيور الرشيدي." },
-      { property: "og:title", content: "لوحة الإدارة — طيور الرشيدي" },
-      { property: "og:description", content: "إدارة منتجات وعروض وطلبات طيور الرشيدي." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
+  head: () => ({ meta: [{ title: "لوحة الإدارة — طيور الرشيدي" }] }),
   component: AdminPage,
 });
 
@@ -376,7 +366,6 @@ function AdminPage() {
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
-            <TabsTrigger value="notifications">🔔 الإشعارات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
             <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
           </TabsList>
@@ -386,7 +375,6 @@ function AdminPage() {
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
-          <TabsContent value="notifications"><NotificationsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
           <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
         </Tabs>
@@ -417,7 +405,7 @@ function Dashboard() {
         supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
-        supabase.from("orders").select("total", { count: "exact" }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("orders").select("total"),
         supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
@@ -677,7 +665,6 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
 
   return (
     <div className="mt-4 space-y-4">
-      {onlyOffers && <OfferTextImporter onSaved={load} />}
       <div className="flex flex-wrap items-center gap-2">
         <Input
           value={filter}
@@ -747,193 +734,6 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
         />
       )}
     </div>
-  );
-}
-
-type OfferDraft = {
-  name: string;
-  description: string;
-  price: number;
-  imageUrl: string;
-  selected: boolean;
-  imageGenerating: boolean;
-  imageError: string;
-};
-
-function offerSlug(name: string, index: number) {
-  const base = name
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^\w-\u0600-\u06FF]/g, "")
-    .slice(0, 45) || `offer-${index + 1}`;
-  return `${base}-${Date.now().toString(36)}-${index + 1}`;
-}
-
-function OfferTextImporter({ onSaved }: { onSaved: () => void }) {
-  const [text, setText] = useState("");
-  const [drafts, setDrafts] = useState<OfferDraft[]>([]);
-  const [extracting, setExtracting] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const setDraft = (index: number, patch: Partial<OfferDraft>) => {
-    setDrafts((current) => current.map((draft, draftIndex) => draftIndex === index ? { ...draft, ...patch } : draft));
-  };
-
-  const uploadGeneratedImage = async (dataUrl: string, index: number) => {
-    const blob = await fetch(dataUrl).then((response) => response.blob());
-    const path = `offer-ai-${Date.now()}-${index + 1}.png`;
-    const { error } = await supabase.storage.from("product-images").upload(path, blob, {
-      upsert: true,
-      contentType: "image/png",
-    });
-    if (error) throw error;
-    return supabase.storage.from("product-images").getPublicUrl(path).data.publicUrl;
-  };
-
-  const generateImage = async (index: number, offer: Pick<OfferDraft, "name" | "description">) => {
-    setDraft(index, { imageGenerating: true, imageError: "" });
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const accessToken = sessionData.session?.access_token;
-      if (!accessToken) throw new Error("سجل الدخول مرة أخرى لإنشاء الصور");
-      let finalDataUrl = "";
-      await streamImage(
-        "/api/generate-offer-image",
-        { name: offer.name, description: offer.description },
-        (dataUrl, isFinal) => {
-          setDraft(index, { imageUrl: dataUrl });
-          if (isFinal) finalDataUrl = dataUrl;
-        },
-        { Authorization: `Bearer ${accessToken}` },
-      );
-      if (!finalDataUrl) throw new Error("لم تكتمل صورة العرض");
-      const publicUrl = await uploadGeneratedImage(finalDataUrl, index);
-      setDraft(index, { imageUrl: publicUrl, imageGenerating: false, imageError: "" });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "تعذر إنشاء صورة العرض";
-      setDraft(index, { imageUrl: "", imageGenerating: false, imageError: message });
-    }
-  };
-
-  const extract = async () => {
-    if (text.trim().length < 10) return toast.error("اكتب نص العروض الأول");
-    setExtracting(true);
-    try {
-      const { extractOffersFromText } = await import("@/lib/offer-text.functions");
-      const result = await extractOffersFromText({ data: { text } });
-      const nextDrafts = result.offers.map((offer) => ({
-        ...offer,
-        imageUrl: "",
-        selected: true,
-        imageGenerating: false,
-        imageError: "",
-      }));
-      setDrafts(nextDrafts);
-      toast.success(`تم استخراج ${result.offers.length} عرض — جاري إنشاء الصور تلقائياً`);
-      for (const [index, offer] of nextDrafts.entries()) {
-        await generateImage(index, offer);
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "تعذر تحليل نص العروض");
-    } finally {
-      setExtracting(false);
-    }
-  };
-
-  const removeDraft = (index: number) => {
-    setDrafts((current) => current.filter((_, draftIndex) => draftIndex !== index));
-  };
-
-  const save = async () => {
-    const chosen = drafts.filter((draft) => draft.selected && draft.name.trim() && draft.price > 0);
-    if (!chosen.length) return toast.error("اختار عرض واحد على الأقل للحفظ");
-    setSaving(true);
-    const rows = chosen.map((draft, index) => ({
-      ...emptyProduct(true),
-      id: offerSlug(draft.name, index),
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      price: Number(draft.price),
-      image_url: draft.imageUrl,
-      category: "offers",
-      subcategory: "عروض يومية",
-      badge: "🔥 عرض",
-      sort_order: index,
-    }));
-    const { error } = await supabase.from("products").insert(rows);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success(`تم حفظ ${rows.length} عرض منفصل`);
-    setDrafts([]);
-    setText("");
-    onSaved();
-  };
-
-  return (
-    <Card title="✨ تحويل رسالة واتساب إلى عروض منفصلة">
-      <div className="space-y-4">
-        <p className="text-xs text-muted-foreground">
-          الصق رسالة العروض كما هي. هيتم فصل كل عرض تلقائياً، وبعدها تقدر تعدّل الاسم والسعر والصورة قبل الحفظ.
-        </p>
-        <Textarea
-          value={text}
-          onChange={(event) => setText(event.target.value)}
-          placeholder="الصق نص عروض الواتساب هنا..."
-          className="min-h-52 resize-y text-sm leading-7"
-          dir="rtl"
-        />
-        <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={extract} disabled={extracting || text.trim().length < 10} className="bg-gradient-primary text-primary-foreground">
-            <Sparkles className="ml-2 h-4 w-4" />
-            {extracting ? "جاري فصل العروض..." : "استخرج العروض بالذكاء الاصطناعي"}
-          </Button>
-          {drafts.length > 0 && <span className="text-xs font-bold text-muted-foreground">راجع {drafts.length} عرض قبل الحفظ</span>}
-        </div>
-
-        {drafts.length > 0 && (
-          <div className="space-y-3 border-t border-border pt-4">
-            {drafts.map((draft, index) => (
-              <div key={`${index}-${draft.name}`} className={`grid gap-3 rounded-lg border p-3 md:grid-cols-[auto_1fr_8rem_15rem_auto] ${draft.selected ? "border-primary/40 bg-secondary/20" : "border-border opacity-60"}`}>
-                <div className="flex items-start pt-2">
-                  <Switch checked={draft.selected} onCheckedChange={(selected) => setDraft(index, { selected })} aria-label={`اختيار ${draft.name}`} />
-                </div>
-                <div className="space-y-2">
-                  <Input value={draft.name} onChange={(event) => setDraft(index, { name: event.target.value })} placeholder="اسم العرض" />
-                  <Textarea value={draft.description} onChange={(event) => setDraft(index, { description: event.target.value })} placeholder="تفاصيل العرض" className="min-h-16" />
-                </div>
-                <Field label="السعر">
-                  <Input type="number" min="0" step="0.01" value={draft.price} onChange={(event) => setDraft(index, { price: Number(event.target.value) || 0 })} />
-                </Field>
-                <Field label="الصورة">
-                  <div className={draft.imageGenerating ? "blur-sm transition-[filter]" : "transition-[filter]"}>
-                    <ImageUploader value={draft.imageUrl} onChange={(imageUrl) => setDraft(index, { imageUrl, imageError: "" })} productId={`offer-${index + 1}`} compact />
-                  </div>
-                  {draft.imageGenerating && <div className="mt-1 text-[11px] font-bold text-primary">جاري إنشاء الصورة تلقائياً...</div>}
-                  {draft.imageError && (
-                    <div className="mt-1 space-y-1">
-                      <div className="text-[11px] text-destructive">{draft.imageError}</div>
-                      <Button type="button" size="sm" variant="outline" onClick={() => generateImage(index, draft)}>
-                        <RefreshCw className="ml-1 h-3 w-3" /> إعادة إنشاء الصورة
-                      </Button>
-                    </div>
-                  )}
-                </Field>
-                <Button type="button" size="icon" variant="ghost" onClick={() => removeDraft(index)} aria-label="حذف العرض">
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
-            ))}
-            <div className="flex items-center justify-between gap-3 rounded-lg bg-secondary/30 p-3">
-              <span className="text-xs text-muted-foreground">الصور بتتعمل تلقائياً، وتقدر تغيّر أي صورة من زر رفع صورة.</span>
-              <Button onClick={save} disabled={saving || drafts.some((draft) => draft.imageGenerating)} className="bg-gradient-primary text-primary-foreground">
-                <Save className="ml-2 h-4 w-4" />{saving ? "جاري الحفظ..." : "حفظ العروض المختارة"}
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-    </Card>
   );
 }
 
@@ -1592,7 +1392,7 @@ function HomeHeroCard() {
   );
 }
 
-function ImageUploader({ value, onChange, productId, compact = false }: { value: string; onChange: (url: string) => void; productId: string; compact?: boolean }) {
+function ImageUploader({ value, onChange, productId }: { value: string; onChange: (url: string) => void; productId: string }) {
   const [uploading, setUploading] = useState(false);
   const onFile = async (file: File) => {
     setUploading(true);
@@ -1628,7 +1428,7 @@ function ImageUploader({ value, onChange, productId, compact = false }: { value:
           <Button type="button" size="icon" variant="ghost" onClick={() => onChange("")}><X className="h-4 w-4" /></Button>
         )}
       </div>
-      {!compact && <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />}
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="أو الصق رابط صورة" className="text-xs" />
     </div>
   );
 }
@@ -2079,123 +1879,6 @@ function MenuScanTab() {
           </div>
         </Card>
       )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Customer notifications                                              */
-/* ------------------------------------------------------------------ */
-type NotificationRow = {
-  id: string;
-  title: string;
-  body: string;
-  link: string | null;
-  is_active: boolean;
-  created_at: string;
-};
-
-function NotificationsTab() {
-  const [rows, setRows] = useState<NotificationRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState<{ id?: string; title: string; body: string; link: string } | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const load = async () => {
-    setLoading(true);
-    const { data } = await supabase.from("notifications" as any).select("*").order("created_at", { ascending: false });
-    setRows(((data || []) as unknown) as NotificationRow[]);
-    setLoading(false);
-  };
-
-  useEffect(() => { load(); }, []);
-
-  const save = async () => {
-    if (!editing || !editing.title.trim() || !editing.body.trim()) return toast.error("العنوان والنص مطلوبين");
-    setSaving(true);
-    const payload = { title: editing.title.trim(), body: editing.body.trim(), link: editing.link.trim() || null };
-    const q = editing.id
-      ? supabase.from("notifications" as any).update(payload).eq("id", editing.id)
-      : supabase.from("notifications" as any).insert(payload);
-    const { error } = await q;
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success(editing.id ? "تم تحديث الإشعار" : "تم إرسال الإشعار للعملاء");
-    setEditing(null);
-    load();
-  };
-
-  const toggle = async (r: NotificationRow) => {
-    const { error } = await supabase.from("notifications" as any).update({ is_active: !r.is_active }).eq("id", r.id);
-    if (error) return toast.error(error.message);
-    load();
-  };
-
-  const remove = async (id: string) => {
-    if (!confirm("متأكد من حذف الإشعار؟")) return;
-    const { error } = await supabase.from("notifications" as any).delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("تم الحذف");
-    load();
-  };
-
-  return (
-    <div className="mt-4 space-y-4">
-      <Card title="🔔 إشعارات العملاء">
-        <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">
-            الإشعار النشط بيظهر لكل العملاء فوق الموقع. العنوان هو رأس الإشعار اللي بيظهر بخط كبير.
-          </p>
-          {!editing && (
-            <Button onClick={() => setEditing({ title: "", body: "", link: "" })} className="bg-gradient-primary text-primary-foreground">
-              <Plus className="ml-1 h-4 w-4" /> إشعار جديد
-            </Button>
-          )}
-          {editing && (
-            <div className="space-y-3 rounded-lg border border-border p-4">
-              <Field label="العنوان (رأس الإشعار)">
-                <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="مثال: عروض النهاية الأسبوع 🔥" />
-              </Field>
-              <Field label="نص الإشعار">
-                <Textarea value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} placeholder="تفاصيل الإشعار اللي هيشوفها العميل..." className="min-h-20" />
-              </Field>
-              <Field label="رابط (اختياري)">
-                <Input value={editing.link} onChange={(e) => setEditing({ ...editing, link: e.target.value })} placeholder="/offers" dir="ltr" />
-              </Field>
-              <div className="flex gap-2">
-                <Button onClick={save} disabled={saving} className="bg-gradient-primary text-primary-foreground">
-                  <Save className="ml-1 h-4 w-4" />{saving ? "جاري الحفظ..." : editing.id ? "حفظ التعديل" : "إرسال الإشعار"}
-                </Button>
-                <Button variant="outline" onClick={() => setEditing(null)}>إلغاء</Button>
-              </div>
-            </div>
-          )}
-          {loading ? (
-            <div className="py-6 text-center text-muted-foreground">جاري التحميل...</div>
-          ) : (
-            <div className="space-y-2">
-              {rows.map((r) => (
-                <div key={r.id} className={`rounded-lg border p-3 ${r.is_active ? "border-primary/40 bg-secondary/30" : "border-border opacity-70"}`}>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="font-extrabold">{r.title}</div>
-                      <div className="text-sm text-muted-foreground">{r.body}</div>
-                      {r.link && <div className="text-xs text-muted-foreground" dir="ltr">{r.link}</div>}
-                      <div className="text-[11px] text-muted-foreground">{new Date(r.created_at).toLocaleString("ar-EG")}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Switch checked={r.is_active} onCheckedChange={() => toggle(r)} aria-label="تشغيل/إيقاف" />
-                      <Button size="icon" variant="ghost" onClick={() => setEditing({ id: r.id, title: r.title, body: r.body, link: r.link || "" })}><Pencil className="h-4 w-4" /></Button>
-                      <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {rows.length === 0 && <div className="py-4 text-center text-sm text-muted-foreground">لا توجد إشعارات بعد</div>}
-            </div>
-          )}
-        </div>
-      </Card>
     </div>
   );
 }

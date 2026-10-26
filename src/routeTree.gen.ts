@@ -9,50 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
-import { Route as BranchesRouteImport } from './routes/branches'
-import { Route as CheckoutRouteImport } from './routes/checkout'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as MarinadesRouteImport } from './routes/marinades'
-import { Route as MealsRouteImport } from './routes/meals'
-import { Route as OffersRouteImport } from './routes/offers'
 import { Route as ProductsRouteImport } from './routes/products'
-import { Route as ApiGenerateOfferImageRouteImport } from './routes/api/generate-offer-image'
+import { Route as OffersRouteImport } from './routes/offers'
+import { Route as MealsRouteImport } from './routes/meals'
+import { Route as MarinadesRouteImport } from './routes/marinades'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as CheckoutRouteImport } from './routes/checkout'
+import { Route as BranchesRouteImport } from './routes/branches'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as IndexRouteImport } from './routes/index'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BranchesRoute = BranchesRouteImport.update({
-  id: '/branches',
-  path: '/branches',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CheckoutRoute = CheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MarinadesRoute = MarinadesRouteImport.update({
-  id: '/marinades',
-  path: '/marinades',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MealsRoute = MealsRouteImport.update({
-  id: '/meals',
-  path: '/meals',
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OffersRoute = OffersRouteImport.update({
@@ -60,14 +29,39 @@ const OffersRoute = OffersRouteImport.update({
   path: '/offers',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProductsRoute = ProductsRouteImport.update({
-  id: '/products',
-  path: '/products',
+const MealsRoute = MealsRouteImport.update({
+  id: '/meals',
+  path: '/meals',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiGenerateOfferImageRoute = ApiGenerateOfferImageRouteImport.update({
-  id: '/api/generate-offer-image',
-  path: '/api/generate-offer-image',
+const MarinadesRoute = MarinadesRouteImport.update({
+  id: '/marinades',
+  path: '/marinades',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutRoute = CheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BranchesRoute = BranchesRouteImport.update({
+  id: '/branches',
+  path: '/branches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -81,7 +75,6 @@ export interface FileRoutesByFullPath {
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
   '/products': typeof ProductsRoute
-  '/api/generate-offer-image': typeof ApiGenerateOfferImageRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -93,7 +86,6 @@ export interface FileRoutesByTo {
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
   '/products': typeof ProductsRoute
-  '/api/generate-offer-image': typeof ApiGenerateOfferImageRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -106,7 +98,6 @@ export interface FileRoutesById {
   '/meals': typeof MealsRoute
   '/offers': typeof OffersRoute
   '/products': typeof ProductsRoute
-  '/api/generate-offer-image': typeof ApiGenerateOfferImageRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -120,7 +111,6 @@ export interface FileRouteTypes {
     | '/meals'
     | '/offers'
     | '/products'
-    | '/api/generate-offer-image'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -132,7 +122,6 @@ export interface FileRouteTypes {
     | '/meals'
     | '/offers'
     | '/products'
-    | '/api/generate-offer-image'
   id:
     | '__root__'
     | '/'
@@ -144,7 +133,6 @@ export interface FileRouteTypes {
     | '/meals'
     | '/offers'
     | '/products'
-    | '/api/generate-offer-image'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -157,58 +145,15 @@ export interface RootRouteChildren {
   MealsRoute: typeof MealsRoute
   OffersRoute: typeof OffersRoute
   ProductsRoute: typeof ProductsRoute
-  ApiGenerateOfferImageRoute: typeof ApiGenerateOfferImageRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/branches': {
-      id: '/branches'
-      path: '/branches'
-      fullPath: '/branches'
-      preLoaderRoute: typeof BranchesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/checkout': {
-      id: '/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof CheckoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/marinades': {
-      id: '/marinades'
-      path: '/marinades'
-      fullPath: '/marinades'
-      preLoaderRoute: typeof MarinadesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/meals': {
-      id: '/meals'
-      path: '/meals'
-      fullPath: '/meals'
-      preLoaderRoute: typeof MealsRouteImport
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/offers': {
@@ -218,18 +163,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OffersRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/products': {
-      id: '/products'
-      path: '/products'
-      fullPath: '/products'
-      preLoaderRoute: typeof ProductsRouteImport
+    '/meals': {
+      id: '/meals'
+      path: '/meals'
+      fullPath: '/meals'
+      preLoaderRoute: typeof MealsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/generate-offer-image': {
-      id: '/api/generate-offer-image'
-      path: '/api/generate-offer-image'
-      fullPath: '/api/generate-offer-image'
-      preLoaderRoute: typeof ApiGenerateOfferImageRouteImport
+    '/marinades': {
+      id: '/marinades'
+      path: '/marinades'
+      fullPath: '/marinades'
+      preLoaderRoute: typeof MarinadesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout': {
+      id: '/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof CheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/branches': {
+      id: '/branches'
+      path: '/branches'
+      fullPath: '/branches'
+      preLoaderRoute: typeof BranchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -245,7 +225,6 @@ const rootRouteChildren: RootRouteChildren = {
   MealsRoute: MealsRoute,
   OffersRoute: OffersRoute,
   ProductsRoute: ProductsRoute,
-  ApiGenerateOfferImageRoute: ApiGenerateOfferImageRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

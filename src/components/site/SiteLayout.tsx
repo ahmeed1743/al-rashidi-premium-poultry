@@ -1,5 +1,4 @@
 import { Navbar } from "./Navbar";
-import { NotificationBanner } from "./NotificationBanner";
 import { Footer } from "./Footer";
 import { CartDrawer } from "./CartDrawer";
 import { CartFab } from "./CartFab";
@@ -15,7 +14,6 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   useEffect(() => { trackVisit(loc.pathname); }, [loc.pathname]);
   return (
     <div className="min-h-screen">
-      <NotificationBanner />
       <Navbar />
       <main>{children}</main>
       <Footer />
