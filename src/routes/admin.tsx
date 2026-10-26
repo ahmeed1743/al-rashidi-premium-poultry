@@ -376,6 +376,7 @@ function AdminPage() {
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
+            <TabsTrigger value="notifications">🔔 الإشعارات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
             <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
           </TabsList>
@@ -385,6 +386,7 @@ function AdminPage() {
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
+          <TabsContent value="notifications"><NotificationsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
           <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
         </Tabs>
@@ -415,7 +417,7 @@ function Dashboard() {
         supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
-        supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("total", { count: "exact" }).gte("created_at", startToday.toISOString()),
         supabase.from("orders").select("total"),
         supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
@@ -2077,6 +2079,123 @@ function MenuScanTab() {
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Customer notifications                                              */
+/* ------------------------------------------------------------------ */
+type NotificationRow = {
+  id: string;
+  title: string;
+  body: string;
+  link: string | null;
+  is_active: boolean;
+  created_at: string;
+};
+
+function NotificationsTab() {
+  const [rows, setRows] = useState<NotificationRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<{ id?: string; title: string; body: string; link: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("notifications" as any).select("*").order("created_at", { ascending: false });
+    setRows(((data || []) as unknown) as NotificationRow[]);
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const save = async () => {
+    if (!editing || !editing.title.trim() || !editing.body.trim()) return toast.error("العنوان والنص مطلوبين");
+    setSaving(true);
+    const payload = { title: editing.title.trim(), body: editing.body.trim(), link: editing.link.trim() || null };
+    const q = editing.id
+      ? supabase.from("notifications" as any).update(payload).eq("id", editing.id)
+      : supabase.from("notifications" as any).insert(payload);
+    const { error } = await q;
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(editing.id ? "تم تحديث الإشعار" : "تم إرسال الإشعار للعملاء");
+    setEditing(null);
+    load();
+  };
+
+  const toggle = async (r: NotificationRow) => {
+    const { error } = await supabase.from("notifications" as any).update({ is_active: !r.is_active }).eq("id", r.id);
+    if (error) return toast.error(error.message);
+    load();
+  };
+
+  const remove = async (id: string) => {
+    if (!confirm("متأكد من حذف الإشعار؟")) return;
+    const { error } = await supabase.from("notifications" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("تم الحذف");
+    load();
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      <Card title="🔔 إشعارات العملاء">
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">
+            الإشعار النشط بيظهر لكل العملاء فوق الموقع. العنوان هو رأس الإشعار اللي بيظهر بخط كبير.
+          </p>
+          {!editing && (
+            <Button onClick={() => setEditing({ title: "", body: "", link: "" })} className="bg-gradient-primary text-primary-foreground">
+              <Plus className="ml-1 h-4 w-4" /> إشعار جديد
+            </Button>
+          )}
+          {editing && (
+            <div className="space-y-3 rounded-lg border border-border p-4">
+              <Field label="العنوان (رأس الإشعار)">
+                <Input value={editing.title} onChange={(e) => setEditing({ ...editing, title: e.target.value })} placeholder="مثال: عروض النهاية الأسبوع 🔥" />
+              </Field>
+              <Field label="نص الإشعار">
+                <Textarea value={editing.body} onChange={(e) => setEditing({ ...editing, body: e.target.value })} placeholder="تفاصيل الإشعار اللي هيشوفها العميل..." className="min-h-20" />
+              </Field>
+              <Field label="رابط (اختياري)">
+                <Input value={editing.link} onChange={(e) => setEditing({ ...editing, link: e.target.value })} placeholder="/offers" dir="ltr" />
+              </Field>
+              <div className="flex gap-2">
+                <Button onClick={save} disabled={saving} className="bg-gradient-primary text-primary-foreground">
+                  <Save className="ml-1 h-4 w-4" />{saving ? "جاري الحفظ..." : editing.id ? "حفظ التعديل" : "إرسال الإشعار"}
+                </Button>
+                <Button variant="outline" onClick={() => setEditing(null)}>إلغاء</Button>
+              </div>
+            </div>
+          )}
+          {loading ? (
+            <div className="py-6 text-center text-muted-foreground">جاري التحميل...</div>
+          ) : (
+            <div className="space-y-2">
+              {rows.map((r) => (
+                <div key={r.id} className={`rounded-lg border p-3 ${r.is_active ? "border-primary/40 bg-secondary/30" : "border-border opacity-70"}`}>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-extrabold">{r.title}</div>
+                      <div className="text-sm text-muted-foreground">{r.body}</div>
+                      {r.link && <div className="text-xs text-muted-foreground" dir="ltr">{r.link}</div>}
+                      <div className="text-[11px] text-muted-foreground">{new Date(r.created_at).toLocaleString("ar-EG")}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Switch checked={r.is_active} onCheckedChange={() => toggle(r)} aria-label="تشغيل/إيقاف" />
+                      <Button size="icon" variant="ghost" onClick={() => setEditing({ id: r.id, title: r.title, body: r.body, link: r.link || "" })}><Pencil className="h-4 w-4" /></Button>
+                      <Button size="icon" variant="ghost" onClick={() => remove(r.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {rows.length === 0 && <div className="py-4 text-center text-sm text-muted-foreground">لا توجد إشعارات بعد</div>}
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 }
