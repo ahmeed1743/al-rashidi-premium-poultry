@@ -376,6 +376,7 @@ function AdminPage() {
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
+            <TabsTrigger value="notifications">🔔 الإشعارات</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
             <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
           </TabsList>
@@ -385,6 +386,7 @@ function AdminPage() {
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
+          <TabsContent value="notifications"><NotificationsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
           <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
         </Tabs>
@@ -415,7 +417,7 @@ function Dashboard() {
         supabase.from("visit_events").select("id", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
         supabase.from("visit_events").select("created_at").gte("created_at", startWeek.toISOString()),
         supabase.from("visit_events").select("session_id").gte("created_at", live5.toISOString()),
-        supabase.from("orders").select("total", { count: "exact", head: true }).gte("created_at", startToday.toISOString()),
+        supabase.from("orders").select("total", { count: "exact" }).gte("created_at", startToday.toISOString()),
         supabase.from("orders").select("total"),
         supabase.from("orders").select("created_at, total").gte("created_at", startWeek.toISOString()),
         supabase.from("orders").select("id, created_at, customer_name, phone, total, mode, items, time_slot, region").order("created_at", { ascending: false }).limit(15),
