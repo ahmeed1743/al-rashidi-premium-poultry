@@ -390,7 +390,11 @@ function Dashboard() {
   const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 10000);
+    // Refresh only every 60s and only while the tab is visible — keeps the
+    // backend asleep instead of polling it awake all day.
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") setTick((t) => t + 1);
+    }, 60000);
     return () => clearInterval(id);
   }, []);
 
@@ -1204,7 +1208,9 @@ function VisitorsTab() {
   const [data, setData] = useState<any | null>(null);
   const [tick, setTick] = useState(0);
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 8000);
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") setTick((t) => t + 1);
+    }, 60000);
     return () => clearInterval(id);
   }, []);
   useEffect(() => {
