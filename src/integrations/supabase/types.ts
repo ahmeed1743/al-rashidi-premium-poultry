@@ -170,6 +170,54 @@ export type Database = {
         }
         Relationships: []
       }
+      product_sale_units: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          price: number
+          product_id: string
+          unit_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          price?: number
+          product_id: string
+          unit_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          price?: number
+          product_id?: string
+          unit_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_sale_units_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_sale_units_unit_id_fkey"
+            columns: ["unit_id"]
+            isOneToOne: false
+            referencedRelation: "sale_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           badge: string | null
@@ -232,6 +280,36 @@ export type Database = {
           sold_out?: boolean
           sort_order?: number
           subcategory?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      sale_units: {
+        Row: {
+          created_at: string
+          display_format: string | null
+          id: string
+          is_active: boolean
+          name_ar: string
+          unit_kind: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_format?: string | null
+          id?: string
+          is_active?: boolean
+          name_ar: string
+          unit_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_format?: string | null
+          id?: string
+          is_active?: boolean
+          name_ar?: string
+          unit_kind?: string
           updated_at?: string
         }
         Relationships: []
