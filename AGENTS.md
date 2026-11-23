@@ -1,0 +1,1 @@
+Product sale units are normalized in `sale_units` and `product_sale_units`; each new order item stores its unit, price, and description snapshot so later catalog edits never rewrite order history.
