@@ -74,7 +74,7 @@ export function ProductCard({ product }: { product: Product }) {
                   <div className="mt-0.5 flex items-baseline gap-1">
                     <span className="text-2xl font-black text-primary">{product.price}</span>
                     <span className="text-[11px] font-bold text-muted-foreground">
-                      ج{product.pairUnit ? " /جوز" : ""}
+                      ج{product.priceUnitLabel ? ` / ${product.priceUnitLabel}` : product.pairUnit ? " /جوز" : ""}
                     </span>
                   </div>
                 </div>

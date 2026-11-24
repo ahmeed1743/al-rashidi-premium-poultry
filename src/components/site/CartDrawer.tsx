@@ -8,6 +8,7 @@ import { ProductDialog } from "./ProductDialog";
 import { PRODUCTS } from "@/data/products";
 import { useQuery } from "@tanstack/react-query";
 import { fetchProducts } from "@/lib/products-api";
+import { displaySaleUnitName } from "@/lib/sale-units";
 
 export function CartDrawer() {
   const { items, isOpen, setOpen, updateQty, removeItem } = useCart();
@@ -78,7 +79,9 @@ export function CartDrawer() {
                             </button>
                             <span className="min-w-10 text-center text-sm font-bold">
                               {it.quantity}
-                              {it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : ""}
+                              {it.unitId && it.unitLabel
+                                ? ` ${displaySaleUnitName(it.quantity, it.unitFormat, it.unitLabel)}`
+                                : it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : ""}
                             </span>
                             <button
                               onClick={() => updateQty(it.uid, it.quantity + (it.step || 1))}

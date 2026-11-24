@@ -18,6 +18,7 @@ describe("sale unit formatting", () => {
       name: "وراك بالعظم",
       quantity: 7,
       price: 105,
+      unitId: "count",
       unitLabel: "قطعة",
       unitKind: "count",
       options: { "الطلب": "بالعدد", "التقطيع": "مقطع - قطع /2" },

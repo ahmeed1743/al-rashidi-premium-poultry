@@ -57,8 +57,8 @@ export function buildWhatsappOrderMessage(input: WhatsappOrderMessageInput): str
     const offerPrice = item.isOffer
       ? ` — سعر العرض: ${quantityText(item.price * item.quantity)} ج.م`
       : "";
-    lines.push(`${offerPrefix}${productLine}${offerPrice}`);
-    if (item.generalNote?.trim()) lines.push(`📝 ${item.generalNote.trim()}`);
+    const itemNote = item.generalNote?.trim() ? ` — ملاحظة: ${item.generalNote.trim()}` : "";
+    lines.push(`${offerPrefix}${productLine}${itemNote}${offerPrice}`);
     if (index < input.items.length - 1) lines.push(itemDivider);
   });
   lines.push(sectionDivider);

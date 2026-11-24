@@ -7,6 +7,7 @@ import { Minus, Plus, ShoppingCart, Info } from "lucide-react";
 import type { Product, ProductConfig } from "@/data/products";
 import { useCart, type CartItem } from "@/store/cart";
 import { getSchema, type Group, type UnitOption, type CustomSchema } from "@/data/customization";
+import { displaySaleUnitName } from "@/lib/sale-units";
 import { toast } from "sonner";
 
 /** Chip whose explanation popover opens automatically when clicked */
@@ -125,8 +126,11 @@ function UnitRow({
             }`}
           >
             {u.label}
+            {u.price !== undefined && (
+              <div className="mt-1 text-xs font-black">{u.price.toLocaleString("en-US")} ج.م</div>
+            )}
             <div className="mt-0.5 text-[10px] font-normal opacity-80">
-              {u.id === "kg" ? "تقدر تطلب كسور (نص كيلو)" : "بالقطعة"}
+              {u.unitKind === "weight" || u.id === "kg" ? "تقدر تطلب كسور" : "بالعدد"}
             </div>
           </button>
         ))}
@@ -148,14 +152,27 @@ export function ProductDialog({
   const schema = useMemo<CustomSchema>(() => {
     const base = getSchema(product.customization);
     const cfg: ProductConfig = product.config || {};
-    let units = base.units;
-    if (cfg.allowHalfKg === false && units) {
-      units = units.map((u) => (u.id === "kg" ? { ...u, step: 1 } : u));
-    }
-    if (cfg.hideUnit) units = undefined;
-    if (cfg.forceUnit && base.units) {
-      const f = base.units.find((u) => u.id === cfg.forceUnit);
-      units = f ? [f] : units;
+    const configuredUnits = product.saleUnits?.filter((unit) => unit.isActive) || [];
+    let units = configuredUnits.length > 0
+      ? configuredUnits.map((unit) => ({
+          id: unit.unitId,
+          label: unit.name,
+          unitLabel: unit.name,
+          unitFormat: unit.displayFormat,
+          unitKind: unit.kind,
+          price: unit.price,
+          step: unit.kind === "weight" ? 0.5 : 1,
+        }))
+      : base.units;
+    if (configuredUnits.length === 0) {
+      if (cfg.allowHalfKg === false && units) {
+        units = units.map((u) => (u.id === "kg" ? { ...u, step: 1 } : u));
+      }
+      if (cfg.hideUnit) units = undefined;
+      if (cfg.forceUnit && base.units) {
+        const f = base.units.find((u) => u.id === cfg.forceUnit);
+        units = f ? [f] : units;
+      }
     }
     let cuts = base.cuts;
     if (cfg.hideCuts) cuts = undefined;
@@ -170,7 +187,7 @@ export function ProductDialog({
     }
     let sizes = cfg.hideSize ? undefined : base.sizes;
     if (sizes && cfg.enabledSizes && cfg.enabledSizes.length) {
-      sizes = sizes.filter((s) => cfg.enabledSizes!.includes(s.id));
+      sizes = sizes.filter((s) => cfg.enabledSizes?.includes(s.id));
     }
     if (cfg.customSizes && cfg.customSizes.length) {
       sizes = cfg.customSizes.map((s) => ({ id: s.id || s.label, label: s.label, info: s.info }));
@@ -180,7 +197,14 @@ export function ProductDialog({
       types = cfg.customTypes.map((t) => ({ id: t.id || t.label, label: t.label, info: t.info }));
     }
     return { ...base, units, cuts, sizes, types };
-  }, [product.customization, product.config]);
+  }, [product.customization, product.config, product.saleUnits]);
+
+  const initialUnitId = (() => {
+    const editUnitId = editing?.raw?.unitId;
+    if (editUnitId && schema.units?.some((unit) => unit.id === editUnitId)) return editUnitId;
+    const defaultUnit = product.saleUnits?.find((unit) => unit.isDefault && unit.isActive);
+    return defaultUnit?.unitId || (schema.units?.length === 1 ? schema.units[0]?.id || "" : "");
+  })();
 
   const [unitId, setUnitId] = useState("");
   const [sizeId, setSizeId] = useState("");
@@ -193,7 +217,7 @@ export function ProductDialog({
   useEffect(() => {
     if (!open) return;
     if (editing) {
-      setUnitId(editing.raw?.unitId || "");
+      setUnitId(initialUnitId);
       setSizeId(editing.raw?.sizeId || "");
       setTypeId(editing.raw?.typeId || "");
       setCutId(editing.raw?.cutId || "");
@@ -201,7 +225,7 @@ export function ProductDialog({
       setNote(editing.generalNote || "");
       setQty(editing.quantity);
     } else {
-      setUnitId(schema.units && schema.units.length === 1 ? schema.units[0].id : "");
+      setUnitId(initialUnitId);
       setSizeId(schema.sizes?.[0]?.id || "");
       setTypeId(schema.types?.[0]?.id || "");
       setCutId("");
@@ -209,7 +233,7 @@ export function ProductDialog({
       setNote("");
       setQty(1);
     }
-  }, [open, product.id]);
+  }, [open, product.id, initialUnitId, editing?.uid]);
 
   const cutGroup = schema.cuts?.find((g) => g.id === cutId);
   const sizeGroup = schema.sizes?.find((g) => g.id === sizeId);
@@ -237,7 +261,6 @@ export function ProductDialog({
     if (subMissing) return toast.error("اختر طريقة التقطيع");
 
     const opts: Record<string, string> = {};
-    if (unitOpt) opts["الطلب"] = unitOpt.label;
     if (sizeGroup) opts["الحجم"] = sizeGroup.label;
     if (typeGroup) opts["النوع"] = typeGroup.label;
     if (cutGroup) {
@@ -249,11 +272,13 @@ export function ProductDialog({
       productId: product.id,
       name: product.name,
       image: product.image,
-      price: product.price,
+      price: unitOpt?.price ?? product.price,
       quantity: qty,
       pairUnit: product.pairUnit,
       unitId: unitOpt?.id,
       unitLabel: unitOpt?.unitLabel,
+      unitFormat: unitOpt?.unitFormat,
+      unitKind: unitOpt?.unitKind,
       step,
       options: Object.keys(opts).length ? opts : undefined,
       generalNote: note.trim() || undefined,
@@ -270,7 +295,7 @@ export function ProductDialog({
     onOpenChange(false);
   };
 
-  const qtyLabel = product.pairUnit ? "جوز" : unitOpt ? unitOpt.unitLabel : "كمية";
+  const qtyLabel = unitOpt ? displaySaleUnitName(qty, unitOpt.unitFormat, unitOpt.unitLabel) : product.pairUnit ? "جوز" : "كمية";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -291,7 +316,7 @@ export function ProductDialog({
             </div>
           )}
 
-          {schema.units && schema.units.length > 0 && (
+          {schema.units && schema.units.length > 1 && (
             <UnitRow units={schema.units} value={unitId} onChange={setUnitId} />
           )}
           {schema.sizes && schema.sizes.length > 0 && (

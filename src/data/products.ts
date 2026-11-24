@@ -5,6 +5,7 @@ import turkeyImg from "@/assets/p-turkey.jpg";
 import rabbitImg from "@/assets/p-rabbit.jpg";
 import marinatedImg from "@/assets/p-marinated.jpg";
 import mealImg from "@/assets/p-meal.jpg";
+import type { ConfiguredSaleUnit } from "@/lib/sale-units";
 
 export type SectionId = "chicken" | "duck" | "turkey" | "pigeon" | "marinated" | "parts" | "other" | "offers";
 
@@ -47,6 +48,8 @@ export interface Product {
   soldOut?: boolean;
   config?: ProductConfig;
   discountPercent?: number;
+  saleUnits?: ConfiguredSaleUnit[];
+  priceUnitLabel?: string;
 }
 
 export const SECTIONS: { id: SectionId; label: string; emoji: string }[] = [

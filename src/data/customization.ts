@@ -15,6 +15,9 @@ export type UnitOption = {
   step: number;        // 0.5 for kg, 1 for count
   unitLabel: string;   // 'كيلو' | 'قطعة'
   info?: string;
+  price?: number;
+  unitFormat?: string | null;
+  unitKind?: "weight" | "count" | "other";
 };
 
 export type CustomSchema = {

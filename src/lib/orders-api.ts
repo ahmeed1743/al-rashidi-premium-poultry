@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { CartItem } from "@/store/cart";
+import { formatOrderItemDescription } from "@/lib/sale-units";
 
 export interface OrderInput {
   phone: string;
@@ -18,14 +19,25 @@ export interface OrderInput {
 }
 
 export async function saveOrder(input: OrderInput) {
-  const items = input.items.map((it) => ({
-    name: it.name,
-    qty: it.quantity,
-    price: it.price,
-    options: it.options || null,
-    note: it.generalNote || null,
-    pair_unit: !!it.pairUnit,
-  }));
+  const items = input.items.map((it) => {
+    const options = Object.fromEntries(Object.entries(it.options || {}).filter(([key]) => key !== "الطلب"));
+    return {
+      product_id: it.productId,
+      name: it.name,
+      description: formatOrderItemDescription(it),
+      qty: it.quantity,
+      price: it.price,
+      unit_price: it.price,
+      line_total: it.price * it.quantity,
+      unit_id: it.unitId || null,
+      unit_name: it.unitLabel || null,
+      unit_format: it.unitFormat || null,
+      unit_kind: it.unitKind || null,
+      options: Object.keys(options).length > 0 ? options : null,
+      note: it.generalNote || null,
+      pair_unit: !!it.pairUnit,
+    };
+  });
   const total = input.items.reduce((s, it) => s + it.price * it.quantity, 0);
   const discount = input.discount || 0;
   const { error } = await supabase.from("orders").insert({
@@ -44,7 +56,11 @@ export async function saveOrder(input: OrderInput) {
     coupon_code: input.coupon_code || null,
     discount,
   });
-  if (error) console.error("saveOrder", error);
+  if (error) {
+    console.error("saveOrder", error);
+    return false;
+  }
+  return true;
 }
 
 export async function getAddressByPhone(phone: string) {

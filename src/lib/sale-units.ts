@@ -65,6 +65,7 @@ export type OrderMessageItem = {
   name: string;
   quantity: number;
   price: number;
+  unitId?: string;
   pairUnit?: boolean;
   unitLabel?: string;
   unitFormat?: string | null;
@@ -86,9 +87,9 @@ export function formatOrderItemDescription(item: OrderMessageItem): string {
   const productDescription = [item.name.trim(), optionText(item)].filter(Boolean).join(" ");
   const unitName = item.unitLabel?.trim();
 
-  if (item.pairUnit) return `${quantity} جوز ${productDescription}`;
+  if (item.pairUnit && !item.unitId) return `${quantity} جوز ${productDescription}`;
   if (item.unitKind === "weight" && unitName) return `${quantity} ${unitName} ${productDescription}`;
-  if (item.unitKind === "count" && unitName === "قطعة") return `عدد ${quantity} ${productDescription}`;
+  if ((item.unitKind === "count" || item.unitId === "count") && unitName === "قطعة") return `عدد ${quantity} ${productDescription}`;
   if (unitName) {
     const formattedName = displaySaleUnitName(item.quantity, item.unitFormat, unitName);
     if (item.unitKind === "count" && unitName === "عدد") return `عدد ${quantity} ${productDescription}`;

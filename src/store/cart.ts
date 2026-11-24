@@ -11,6 +11,8 @@ export interface CartItem {
   pairUnit?: boolean;
   unitId?: string;       // 'kg' | 'count' | undefined
   unitLabel?: string;    // 'كيلو' | 'قطعة' | undefined
+  unitFormat?: string | null;
+  unitKind?: "weight" | "count" | "other";
   step?: number;         // 0.5 for kg, otherwise 1
   options?: Record<string, string>;
   generalNote?: string;

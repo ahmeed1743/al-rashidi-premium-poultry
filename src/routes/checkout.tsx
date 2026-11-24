@@ -18,6 +18,8 @@ import { PRODUCTS } from "@/data/products";
 import type { CartItem } from "@/store/cart";
 import { SpinWheelDialog, loadSpinConfig, canSpinNow, type SpinConfig, type ActivePrize as WheelPrize } from "@/components/site/SpinWheel";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { buildWhatsappOrderMessage } from "@/lib/order-message";
+import { displaySaleUnitName } from "@/lib/sale-units";
 
 const PRIZE_KEY = "spin_wheel_prize";
 type ActivePrize = { id: string; label: string; type: "coupon" | "gift" | "none"; code?: string; note?: string };
@@ -159,53 +161,25 @@ function CheckoutPage() {
   }, [form.phone]);
 
   const buildMessage = () => {
-    const lines: string[] = [];
-    lines.push("🍗 *طلب جديد - طيور الرشيدي*");
-    lines.push("━━━━━━━━━━━━━━");
-    lines.push(`👤 الاسم: ${form.name}`);
-    lines.push(`📱 الهاتف: ${form.phone}`);
-    lines.push(`🚚 ${method === "delivery" ? "توصيل" : "استلام من الفرع: " + branch}`);
-    lines.push(`⏰ الوقت: ${timeSlot}`);
-    if (method === "delivery") {
-      lines.push("📍 العنوان:");
-      if (form.area) lines.push(`  • المنطقة: ${form.area}`);
-      if (form.street) lines.push(`  • الشارع: ${form.street}`);
-      if (form.floorApt) lines.push(`  • الدور والشقة: ${form.floorApt}`);
-    }
-    lines.push(`💰 الدفع: ${pay === "cash" ? "كاش" : "Instapay"}`);
-    if (coupon) {
-      const sub = items.reduce((s, it) => s + it.price * it.quantity, 0);
-      const disc = computeDiscount(sub);
-      lines.push(`🎟️ كوبون: ${coupon.code} (-${disc} ج.م)`);
-    }
-    lines.push("");
-    lines.push("🛒 *المنتجات*");
-    items.forEach((it, i) => {
-      const unitTxt = it.pairUnit ? " جوز" : it.unitLabel ? ` ${it.unitLabel}` : "";
-      const prod = products.find((p) => p.id === it.productId);
-      const isOffer = prod?.section === "offers";
-      const prefix = isOffer ? "🔥 [عرض] " : "";
-      lines.push(`${i + 1}. ${prefix}${it.name}  ×${it.quantity}${unitTxt}`);
-      if (isOffer) {
-        lines.push(`    💰 سعر العرض: ${(it.price * it.quantity).toFixed(2)} ج.م`);
-      }
-      if (it.options) Object.entries(it.options).forEach(([k, v]) => lines.push(`    - ${k}: ${v}`));
-      if (it.generalNote) lines.push(`    📝 ${it.generalNote}`);
+    const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    return buildWhatsappOrderMessage({
+      customerName: form.name,
+      phone: form.phone,
+      mode: method,
+      region: form.area,
+      street: form.street,
+      floorApt: form.floorApt,
+      branch: method === "pickup" ? branch : undefined,
+      timeSlot,
+      payment: pay === "cash" ? "كاش" : "انستا باي",
+      notes: form.notes,
+      coupon: coupon ? { code: coupon.code, discount: computeDiscount(subtotal) } : null,
+      prize: prize ? { label: prize.label, code: prize.code, note: prize.note } : null,
+      items: items.map((item) => ({
+        ...item,
+        isOffer: products.find((product) => product.id === item.productId)?.section === "offers",
+      })),
     });
-    if (form.notes) {
-      lines.push("");
-      lines.push(`📌 ملاحظات: ${form.notes}`);
-    }
-    if (prize) {
-      lines.push("");
-      lines.push("━━━━━━━━━━━━━━");
-      lines.push("🎁 *جائزة عجلة الحظ*");
-      lines.push(`  • ${prize.label}`);
-      if (prize.type === "coupon" && prize.code) lines.push(`  • كود: ${prize.code}`);
-      if (prize.note) lines.push(`  • ${prize.note}`);
-      lines.push("  ⚠️ يرجى تسليم الجائزة مع الطلب");
-    }
-    return encodeURIComponent(lines.join("\n"));
   };
 
   const computeDiscount = (subtotal: number) => {
@@ -241,8 +215,9 @@ function CheckoutPage() {
   const handleConfirm = () => {
     if (!validate()) return;
     const shouldShowWheel =
+      !!spinCfg &&
       wheelEligible &&
-      canSpinNow(spinCfg!, form.phone) &&
+      canSpinNow(spinCfg, form.phone) &&
       !prize; // don't re-spin if a prize is already active
     if (shouldShowWheel) {
       setWheelOpen(true);
@@ -274,7 +249,7 @@ function CheckoutPage() {
       }
     }
 
-    Promise.all([
+    const [orderSaved] = await Promise.all([
       saveOrder({
         phone: form.phone,
         customer_name: form.name,
@@ -299,9 +274,15 @@ function CheckoutPage() {
             floor_apt: form.floorApt,
           })
         : Promise.resolve(),
-    ]).catch(() => {});
+    ]).catch(() => [false] as const);
 
-    const url = `https://wa.me/${whatsapp}?text=${buildMessage()}`;
+    if (!orderSaved) {
+      toast.error("تعذر حفظ الطلب، حاول مرة أخرى قبل فتح واتساب");
+      setSubmitting(false);
+      return;
+    }
+
+    const url = `https://wa.me/${whatsapp}?text=${encodeURIComponent(buildMessage())}`;
     window.open(url, "_blank");
     setSent(true);
 
@@ -490,7 +471,11 @@ function CheckoutPage() {
                   <div className="flex justify-between gap-2">
                     <span className="font-bold">{it.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-muted-foreground">×{it.quantity}{it.pairUnit ? " جوز" : ""}</span>
+                      <span className="text-muted-foreground">
+                        ×{it.quantity}{it.unitId && it.unitLabel
+                          ? ` ${displaySaleUnitName(it.quantity, it.unitFormat, it.unitLabel)}`
+                          : it.pairUnit ? " جوز" : ""}
+                      </span>
                       <button
                         onClick={() => setEditing(it)}
                         className="text-muted-foreground transition-colors hover:text-primary"

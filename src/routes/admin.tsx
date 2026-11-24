@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { captureToPdf } from "@/lib/report-pdf";
+import { updateProductSaleUnitDrafts, type ProductSaleUnitDraft } from "@/lib/sale-units";
 
 const DEFAULT_SIZE_OPTIONS = [
   { id: "small", label: "صغير" },
@@ -366,6 +367,7 @@ function AdminPage() {
             <TabsTrigger value="offers">🏷️ العروض</TabsTrigger>
             <TabsTrigger value="orders">🧾 الطلبات</TabsTrigger>
             <TabsTrigger value="coupons">🎟️ الكوبونات</TabsTrigger>
+            <TabsTrigger value="sale-units">📦 وحدات البيع</TabsTrigger>
             <TabsTrigger value="visitors">👥 الزوار</TabsTrigger>
             <TabsTrigger value="spin">🎡 عجلة الحظ</TabsTrigger>
           </TabsList>
@@ -375,6 +377,7 @@ function AdminPage() {
           <TabsContent value="offers"><ProductsAdmin onlyOffers /></TabsContent>
           <TabsContent value="orders"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"><CouponsTab /></TabsContent>
+          <TabsContent value="sale-units"><SaleUnitsTab /></TabsContent>
           <TabsContent value="visitors"><VisitorsTab /></TabsContent>
           <TabsContent value="spin"><SpinAttemptsTab /></TabsContent>
         </Tabs>
@@ -614,6 +617,140 @@ type ProductRow = {
   customization_config: any | null;
 };
 
+type SaleUnitRow = {
+  id: string;
+  name_ar: string;
+  display_format: string | null;
+  unit_kind: string;
+  is_active: boolean;
+};
+
+function SaleUnitsTab() {
+  const [rows, setRows] = useState<SaleUnitRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<SaleUnitRow | null>(null);
+  const [form, setForm] = useState({ name_ar: "", display_format: "", unit_kind: "other", is_active: true });
+
+  const load = async () => {
+    setLoading(true);
+    const { data, error } = await supabase.from("sale_units").select("*").order("is_active", { ascending: false }).order("name_ar");
+    if (error) toast.error(error.message);
+    setRows((data as SaleUnitRow[]) || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { void load(); }, []);
+
+  const beginAdd = () => {
+    setEditing(null);
+    setForm({ name_ar: "", display_format: "", unit_kind: "other", is_active: true });
+    setDialogOpen(true);
+  };
+
+  const beginEdit = (row: SaleUnitRow) => {
+    setEditing(row);
+    setForm({
+      name_ar: row.name_ar,
+      display_format: row.display_format || "",
+      unit_kind: row.unit_kind,
+      is_active: row.is_active,
+    });
+    setDialogOpen(true);
+  };
+
+  const save = async () => {
+    const name = form.name_ar.trim();
+    if (!name) return toast.error("اكتب اسم الوحدة");
+    setSaving(true);
+    const { data: existing, error: checkError } = await supabase.from("sale_units").select("id,name_ar");
+    if (checkError) {
+      setSaving(false);
+      return toast.error(checkError.message);
+    }
+    const normalized = name.toLocaleLowerCase();
+    if (existing?.some((unit) => unit.id !== editing?.id && unit.name_ar.trim().toLocaleLowerCase() === normalized)) {
+      setSaving(false);
+      return toast.error("اسم الوحدة موجود بالفعل");
+    }
+    const payload = {
+      name_ar: name,
+      display_format: form.display_format.trim() || null,
+      unit_kind: form.unit_kind,
+      is_active: form.is_active,
+    };
+    const result = editing
+      ? await supabase.from("sale_units").update(payload).eq("id", editing.id)
+      : await supabase.from("sale_units").insert(payload);
+    setSaving(false);
+    if (result.error) {
+      return toast.error(result.error.message.toLowerCase().includes("duplicate") ? "اسم الوحدة موجود بالفعل" : result.error.message);
+    }
+    toast.success(editing ? "تم تعديل الوحدة" : "تمت إضافة الوحدة");
+    setDialogOpen(false);
+    void load();
+  };
+
+  const toggleActive = async (row: SaleUnitRow) => {
+    const { error } = await supabase.from("sale_units").update({ is_active: !row.is_active }).eq("id", row.id);
+    if (error) return toast.error(error.message);
+    setRows((current) => current.map((unit) => unit.id === row.id ? { ...unit, is_active: !row.is_active } : unit));
+  };
+
+  return (
+    <div className="mt-4 space-y-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <p className="text-sm text-muted-foreground">أضف وحدات البيع وفعّلها أو عطّلها؛ الوحدات المرتبطة بطلبات قديمة تظل محفوظة.</p>
+        <div className="flex-1" />
+        <Button onClick={beginAdd} className="bg-gradient-primary text-primary-foreground"><Plus className="ml-1 h-4 w-4" />إضافة وحدة بيع جديدة</Button>
+      </div>
+      <Card title={`وحدات البيع (${rows.length})`}>
+        {loading ? <div className="py-8 text-center text-muted-foreground">جاري التحميل...</div> : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-right text-sm">
+              <thead className="text-xs text-muted-foreground"><tr>
+                <th className="p-2">اسم الوحدة</th><th className="p-2">صيغة العرض</th><th className="p-2">النوع</th><th className="p-2">الحالة</th><th className="p-2" />
+              </tr></thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-t border-border/50">
+                    <td className="p-2 font-bold">{row.name_ar}</td>
+                    <td className="p-2 text-muted-foreground">{row.display_format || "—"}</td>
+                    <td className="p-2">{row.unit_kind === "weight" ? "وزن" : row.unit_kind === "count" ? "عدد" : "وحدة"}</td>
+                    <td className="p-2"><Switch checked={row.is_active} onCheckedChange={() => void toggleActive(row)} aria-label={`تفعيل ${row.name_ar}`} /></td>
+                    <td className="p-2"><Button size="icon" variant="ghost" onClick={() => beginEdit(row)} aria-label={`تعديل ${row.name_ar}`}><Pencil className="h-4 w-4" /></Button></td>
+                  </tr>
+                ))}
+                {rows.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-muted-foreground">لا توجد وحدات بيع</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-md text-right">
+          <DialogHeader><DialogTitle>{editing ? "تعديل وحدة البيع" : "إضافة وحدة بيع جديدة"}</DialogTitle></DialogHeader>
+          <div className="space-y-4 py-2">
+            <Field label="اسم الوحدة باللغة العربية"><Input value={form.name_ar} onChange={(event) => setForm((current) => ({ ...current, name_ar: event.target.value }))} placeholder="مثال: صينية" /></Field>
+            <Field label="صيغة عرض الوحدة (اختياري)"><Input value={form.display_format} onChange={(event) => setForm((current) => ({ ...current, display_format: event.target.value }))} placeholder="مثال: صينية / صواني" /></Field>
+            <Field label="نوع الوحدة">
+              <select value={form.unit_kind} onChange={(event) => setForm((current) => ({ ...current, unit_kind: event.target.value }))} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
+                <option value="weight">وزن</option><option value="count">عدد</option><option value="other">وحدة أخرى</option>
+              </select>
+            </Field>
+            <Toggle label="الوحدة مفعّلة" v={form.is_active} on={(is_active) => setForm((current) => ({ ...current, is_active }))} />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>إلغاء</Button>
+            <Button onClick={save} disabled={saving} className="bg-gradient-primary text-primary-foreground"><Save className="ml-1 h-4 w-4" />{saving ? "جاري الحفظ..." : "حفظ الوحدة"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
 function emptyProduct(offer = false): ProductRow {
   return {
     id: "", name: "", description: "", price: 0, old_price: null, image_url: "",
@@ -743,21 +880,111 @@ function ProductsAdmin({ onlyOffers = false }: { onlyOffers?: boolean }) {
 
 function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: () => void; onSaved: () => void }) {
   const [r, setR] = useState<ProductRow>(row);
-  const isNew = !row.id;
+  const [savedId, setSavedId] = useState("");
+  const productId = row.id || savedId;
+  const isNew = !productId;
   const [saving, setSaving] = useState(false);
+  const [unitLoading, setUnitLoading] = useState(true);
+  const [saleUnits, setSaleUnits] = useState<SaleUnitRow[]>([]);
+  const [unitConfigs, setUnitConfigs] = useState<Record<string, ProductSaleUnitDraft>>({});
 
   const set = <K extends keyof ProductRow>(k: K, v: ProductRow[K]) => setR((x) => ({ ...x, [k]: v }));
 
+  useEffect(() => {
+    let current = true;
+    const loadUnits = async () => {
+      setUnitLoading(true);
+      const { data: catalog, error: catalogError } = await supabase.from("sale_units").select("*").order("name_ar");
+      if (catalogError) {
+        if (current) {
+          setUnitLoading(false);
+          toast.error(catalogError.message);
+        }
+        return;
+      }
+      const catalogRows = (catalog as SaleUnitRow[]) || [];
+      if (current) setSaleUnits(catalogRows);
+
+      if (productId) {
+        const { data: links, error: linksError } = await supabase
+          .from("product_sale_units")
+          .select("unit_id,price,is_default,is_active")
+          .eq("product_id", productId);
+        if (linksError) {
+          if (current) toast.error(linksError.message);
+        } else if (current) {
+          const activeIds = new Set(catalogRows.filter((unit) => unit.is_active).map((unit) => unit.id));
+          const drafts: Record<string, ProductSaleUnitDraft> = {};
+          for (const link of links || []) {
+            const unitIsAvailable = activeIds.has(link.unit_id);
+            drafts[link.unit_id] = {
+              price: Number(link.price) || 0,
+              isActive: !!link.is_active && unitIsAvailable,
+              isDefault: !!link.is_default && unitIsAvailable,
+            };
+          }
+          setUnitConfigs(drafts);
+        }
+      }
+      if (current) setUnitLoading(false);
+    };
+    void loadUnits();
+    return () => { current = false; };
+  }, [productId]);
+
+  const changeUnitConfig = (unitId: string, change: Partial<ProductSaleUnitDraft>) => {
+    setUnitConfigs((current) => updateProductSaleUnitDrafts(current, unitId, change));
+  };
+
   const save = async () => {
     if (!r.name.trim()) return toast.error("الاسم مطلوب");
-    const id = isNew ? (r.id || r.name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w-\u0600-\u06FF]/g, "")) : r.id;
+    const id = productId || r.id || r.name.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^\w-\u0600-\u06FF]/g, "");
+    const configuredUnits = Object.entries(unitConfigs)
+      .map(([unitId, config]) => ({ unitId, config, unit: saleUnits.find((item) => item.id === unitId) }))
+      .filter((entry): entry is { unitId: string; config: ProductSaleUnitDraft; unit: SaleUnitRow } => !!entry.unit);
+    const activeUnits = configuredUnits.filter(({ config, unit }) => config.isActive && unit.is_active);
+    const defaultUnits = activeUnits.filter(({ config }) => config.isDefault);
+    if (activeUnits.length > 0 && defaultUnits.length !== 1) {
+      return toast.error("اختار وحدة افتراضية واحدة للمنتج");
+    }
     setSaving(true);
-    const payload = { ...r, id, price: Number(r.price) || 0, old_price: r.old_price ? Number(r.old_price) : null };
+    const payload = {
+      ...r,
+      id,
+      price: defaultUnits[0]?.config.price ?? (Number(r.price) || 0),
+      old_price: r.old_price ? Number(r.old_price) : null,
+    };
     const { error } = isNew
       ? await supabase.from("products").insert(payload)
-      : await supabase.from("products").update(payload).eq("id", row.id);
+      : await supabase.from("products").update(payload).eq("id", id);
+    if (error) {
+      setSaving(false);
+      return toast.error(error.message);
+    }
+
+    if (configuredUnits.length > 0) {
+      const { error: resetError } = await supabase.from("product_sale_units").update({ is_default: false }).eq("product_id", id);
+      if (resetError) {
+        setSavedId(id);
+        setSaving(false);
+        return toast.error(resetError.message);
+      }
+      const links = configuredUnits.map(({ unitId, config, unit }) => ({
+        product_id: id,
+        unit_id: unitId,
+        price: Number(config.price) || 0,
+        is_active: config.isActive && unit.is_active,
+        is_default: config.isActive && config.isDefault && unit.is_active,
+      }));
+      const { error: linkError } = await supabase.from("product_sale_units").upsert(links, { onConflict: "product_id,unit_id" });
+      if (linkError) {
+        setSavedId(id);
+        setSaving(false);
+        return toast.error(linkError.message);
+      }
+    }
+
     setSaving(false);
-    if (error) return toast.error(error.message);
     toast.success(isNew ? "تمت الإضافة" : "تم الحفظ");
     onSaved();
   };
@@ -778,6 +1005,55 @@ function ProductEditor({ row, onClose, onSaved }: { row: ProductRow; onClose: ()
           <div className="grid grid-cols-2 gap-3">
             <Field label="السعر"><Input type="number" step="0.01" value={r.price} onChange={(e) => set("price", parseFloat(e.target.value) || 0)} /></Field>
             <Field label="السعر القديم (اختياري)"><Input type="number" step="0.01" value={r.old_price ?? ""} onChange={(e) => set("old_price", e.target.value ? parseFloat(e.target.value) : null)} /></Field>
+          </div>
+          <div className="space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
+            <div>
+              <div className="text-sm font-extrabold">إعدادات وحدة البيع</div>
+              <p className="mt-1 text-[11px] text-muted-foreground">فعّل الوحدات المتاحة، حدّد سعر كل وحدة، واختر وحدة افتراضية واحدة.</p>
+            </div>
+            {unitLoading ? <div className="py-3 text-center text-xs text-muted-foreground">جاري تحميل الوحدات...</div> : saleUnits.length === 0 ? (
+              <div className="py-3 text-center text-xs text-muted-foreground">أضف وحدة بيع أولاً من تبويب إدارة وحدات البيع.</div>
+            ) : (
+              <div className="space-y-2">
+                {saleUnits.map((unit) => {
+                  const config = unitConfigs[unit.id] || { price: Number(r.price) || 0, isActive: false, isDefault: false };
+                  return (
+                    <div key={unit.id} className="grid items-center gap-2 rounded-lg border border-border/70 bg-background p-2 sm:grid-cols-[minmax(0,1fr)_7rem_auto]">
+                      <label className="flex min-w-0 items-center gap-2">
+                        <Switch
+                          checked={config.isActive}
+                          disabled={!unit.is_active}
+                          onCheckedChange={(enabled) => changeUnitConfig(unit.id, { isActive: enabled })}
+                          aria-label={`إتاحة ${unit.name_ar} لهذا المنتج`}
+                        />
+                        <span className="min-w-0 text-sm font-bold">{unit.name_ar}</span>
+                        {!unit.is_active && <span className="text-[10px] text-muted-foreground">معطلة</span>}
+                      </label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={config.price}
+                        disabled={!config.isActive || !unit.is_active}
+                        onChange={(event) => changeUnitConfig(unit.id, { price: parseFloat(event.target.value) || 0 })}
+                        aria-label={`سعر ${unit.name_ar}`}
+                      />
+                      <label className="flex items-center gap-1 whitespace-nowrap text-xs font-semibold">
+                        <input
+                          type="radio"
+                          name={`default-unit-${productId || "new"}`}
+                          checked={config.isDefault && config.isActive}
+                          disabled={!config.isActive || !unit.is_active}
+                          onChange={() => changeUnitConfig(unit.id, { isDefault: true })}
+                        />
+                        افتراضية
+                      </label>
+                      {unit.display_format && <p className="col-span-full px-1 text-[10px] text-muted-foreground">{unit.display_format}</p>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="التصنيف">
@@ -1002,11 +1278,11 @@ function OrdersTable({ orders }: { orders: any[] }) {
                           <div className="space-y-2">
                             {items.map((it, idx) => (
                               <div key={idx} className="rounded-lg bg-background/60 p-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="font-bold">{it.name} {it.qty ? `× ${it.qty}` : ""}</div>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="font-bold">{it.description || `${it.name} ${it.qty ? `× ${it.qty}` : ""}${it.unit_name ? ` ${it.unit_name}` : ""}`}</div>
                                   <div className="font-extrabold text-primary">{Number((it.price || 0) * (it.qty || 1)).toFixed(2)} ج.م</div>
                                 </div>
-                                {it.options && (
+                                {!it.description && it.options && (
                                   <div className="mt-1 text-[11px] text-muted-foreground">
                                     {Object.entries(it.options).map(([k, v]) => `${k}: ${v}`).join(" • ")}
                                   </div>
